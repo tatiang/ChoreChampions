@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>ChoreChampions v1.12</title>
+  <meta name="theme-color" content="#6D4BFF" />
+  <link rel="stylesheet" href="style_v1.12.css" />
+</head>
+<body>
+  <div id="app" class="app">
+    <header class="topbar">
+      <button id="btnBack" class="iconBtn hidden" aria-label="Back">
+        <span class="icon">←</span>
+        <span class="txt">Back</span>
+      </button>
+
+      <div class="topTitle">
+        <div id="pageTitle" class="pageTitle">Get Done! ✨</div>
+        <div id="pageSub" class="pageSub">Who's checking off tasks?</div>
+      </div>
+
+      <div class="topRight">
+        <button id="btnHistory" class="iconBtn" title="History" aria-label="History">
+          <span class="icon">↺</span>
+        </button>
+        <button id="btnLeaderboard" class="iconBtn" title="Leaderboard" aria-label="Leaderboard">
+          <span class="icon">🏅</span>
+        </button>
+        <button id="btnEditTasks" class="iconBtn hidden" title="Edit tasks" aria-label="Edit tasks">
+          <span class="icon">✏️</span>
+        </button>
+        <button id="btnSettings" class="iconBtn" title="Settings" aria-label="Settings">
+          <span class="icon">⚙️</span>
+        </button>
+      </div>
+    </header>
+
+    <main id="main" class="main">
+      <!-- routed screens injected here -->
+    </main>
+
+    <div id="modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modalCard">
+        <div class="modalHead">
+          <div id="modalTitle" class="modalTitle">—</div>
+          <button id="modalClose" class="iconBtn" aria-label="Close"><span class="icon">✕</span></button>
+        </div>
+        <div id="modalBody" class="modalBody"></div>
+      </div>
+    </div>
+
+    <canvas id="confetti" class="confetti" aria-hidden="true"></canvas>
+
+    <footer class="footer">
+      <div class="footLeft">v1.12 • local-only • works best in fullscreen</div>
+      <div class="footRight">
+        <button id="btnToday" class="pillBtn">Today</button>
+        <button id="btnExport" class="pillBtn">Export</button>
+      </div>
+    </footer>
+  </div>
+
+  <script src="app_v1.12.js"></script>
+</body>
+</html>

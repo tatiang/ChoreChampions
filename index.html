@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Our Family Chore Map</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Karla:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="app-header">
+      <div>
+        <span class="eyebrow">Our Family Chore Map</span>
+        <h1>This Week</h1>
+        <p class="week-meta" id="weekMeta">Week of Feb 1-7, 2026 | Rotation Week 2</p>
+      </div>
+      <button class="ghost-btn" id="todayJump" type="button">Today</button>
+    </header>
+
+    <section class="week-card">
+      <div class="week-info">
+        <div>
+          <div class="label">Week Start (Sunday)</div>
+          <div class="value" id="weekStart">February 1, 2026</div>
+        </div>
+        <div>
+          <div class="label">Rotation Week</div>
+          <div class="value" id="rotationWeek">2</div>
+        </div>
+        <div>
+          <div class="label">Legend</div>
+          <div class="value">Lite = fewer/shorter tasks</div>
+        </div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-bar">
+          <div class="progress" id="overallProgress"></div>
+        </div>
+        <div class="progress-meta" id="overallMeta">0 of 0 tasks complete</div>
+      </div>
+    </section>
+
+    <section class="day-selector">
+      <div class="section-title">
+        <h2>Today Focus</h2>
+        <span id="selectedDate">Sunday, Feb 1</span>
+      </div>
+      <div class="day-chips" id="dayChips"></div>
+    </section>
+
+    <main class="cards" id="personCards"></main>
+
+    <section class="overview">
+      <div class="section-title">
+        <h2>Weekly Overview</h2>
+        <span>Tap a square to jump to that day</span>
+      </div>
+      <div class="overview-grid" id="overviewGrid"></div>
+    </section>
+
+    <section class="rotation">
+      <div class="section-title">
+        <h2>This Week's Clusters</h2>
+        <span>Helper view based on rotation</span>
+      </div>
+      <ul class="cluster-list" id="clusterList"></ul>
+    </section>
+
+    <footer class="app-footer">Tap tasks to mark them complete. Progress stays on this device.</footer>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

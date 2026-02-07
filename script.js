@@ -78,12 +78,14 @@ const overallMetaEl = document.getElementById('overallMeta');
 const todayJumpBtn = document.getElementById('todayJump');
 const connectionStatusEl = document.getElementById('connectionStatus');
 const appFooterEl = document.getElementById('appFooter');
+const toastEl = document.getElementById('toast');
 
 const state = {
   selectedDayIndex: 0,
   completed: {},
   syncEnabled: false,
-  weekKey: ''
+  weekKey: '',
+  collapsed: {}
 };
 
 const dataStore = {
@@ -94,7 +96,8 @@ const dataStore = {
   items: [],
   itemsByPersonDay: new Map(),
   itemsByDay: new Map(),
-  itemMap: new Map()
+  itemMap: new Map(),
+  todayIndex: 0
 };
 
 init();
@@ -188,6 +191,7 @@ function applyData(payload, syncEnabled) {
   dataStore.weekStartDate = weekStartDate;
   dataStore.rotationWeek = payload.rotationWeek || getRotationWeek(weekStartDate);
   dataStore.days = buildDays(weekStartDate);
+  dataStore.todayIndex = getInitialDayIndex(dataStore.days);
   state.weekKey = formatDateKey(weekStartDate);
   state.syncEnabled = syncEnabled;
 
@@ -202,6 +206,7 @@ function applyData(payload, syncEnabled) {
   setPeople(items);
   hydrateSelectedDay();
   hydrateCompletion(items, syncEnabled);
+  hydrateCollapsedState();
   renderAll();
 }
 
@@ -299,7 +304,7 @@ function hydrateSelectedDay() {
   if (saved && typeof saved.selectedDayIndex === 'number') {
     state.selectedDayIndex = clamp(saved.selectedDayIndex, 0, 6);
   } else {
-    state.selectedDayIndex = getInitialDayIndex(dataStore.days);
+    state.selectedDayIndex = dataStore.todayIndex;
   }
 }
 
@@ -324,6 +329,15 @@ function hydrateCompletion(items, syncEnabled) {
   });
 }
 
+function hydrateCollapsedState() {
+  const saved = loadUiState();
+  if (saved && saved.collapsed) {
+    state.collapsed = saved.collapsed;
+  } else {
+    state.collapsed = {};
+  }
+}
+
 function loadState() {
   if (!state.weekKey) return null;
   const saved = localStorage.getItem(`chore-map-${state.weekKey}`);
@@ -344,6 +358,22 @@ function saveState() {
       completed: state.completed
     })
   );
+}
+
+function loadUiState() {
+  const saved = localStorage.getItem('chore-map-ui');
+  if (!saved) return null;
+  try {
+    return JSON.parse(saved);
+  } catch (error) {
+    return null;
+  }
+}
+
+function saveUiState() {
+  localStorage.setItem('chore-map-ui', JSON.stringify({
+    collapsed: state.collapsed
+  }));
 }
 
 function renderAll() {
@@ -404,6 +434,9 @@ function renderPersonCards() {
     const card = document.createElement('article');
     card.className = 'person-card';
     card.dataset.personIndex = personIndex;
+    if (state.collapsed[person.name]) {
+      card.classList.add('is-collapsed');
+    }
 
     const header = document.createElement('div');
     header.className = 'person-header';
@@ -425,8 +458,16 @@ function renderPersonCards() {
     progressEl.dataset.personProgress = personIndex;
     progressEl.textContent = `${done}/${total} done`;
 
+    const collapseBtn = document.createElement('button');
+    collapseBtn.type = 'button';
+    collapseBtn.className = 'collapse-btn';
+    collapseBtn.dataset.personName = person.name;
+    collapseBtn.setAttribute('aria-expanded', String(!state.collapsed[person.name]));
+    collapseBtn.textContent = state.collapsed[person.name] ? 'Expand' : 'Collapse';
+
     header.appendChild(titleWrap);
     header.appendChild(progressEl);
+    header.appendChild(collapseBtn);
 
     const list = document.createElement('div');
     list.className = 'task-list';
@@ -434,12 +475,15 @@ function renderPersonCards() {
     const tasks = getVisibleItemsForPersonDay(personIndex, day.key);
     tasks.forEach((task) => {
       const id = task.id;
-      const item = document.createElement('label');
+      const item = document.createElement('div');
       item.className = 'task-item';
       if (isTaskDone(id)) {
         item.classList.add('is-done');
       }
-      item.htmlFor = id;
+
+      const label = document.createElement('label');
+      label.className = 'task-label';
+      label.htmlFor = id;
 
       const input = document.createElement('input');
       input.type = 'checkbox';
@@ -453,8 +497,19 @@ function renderPersonCards() {
       const text = document.createElement('span');
       text.textContent = task.task;
 
-      item.appendChild(input);
-      item.appendChild(text);
+      label.appendChild(input);
+      label.appendChild(text);
+
+      const remindBtn = document.createElement('button');
+      remindBtn.type = 'button';
+      remindBtn.className = 'remind-btn';
+      remindBtn.textContent = 'Remind';
+      remindBtn.dataset.personName = person.name;
+      remindBtn.dataset.dayLabel = day.full;
+      remindBtn.dataset.task = task.task;
+
+      item.appendChild(label);
+      item.appendChild(remindBtn);
       list.appendChild(item);
     });
 
@@ -485,6 +540,9 @@ function renderOverview() {
       cell.dataset.personIndex = personIndex;
       cell.dataset.dayIndex = dayIndex;
       cell.dataset.level = getCompletionLevel(done, total);
+      if (dayIndex === dataStore.todayIndex) {
+        cell.classList.add('is-today');
+      }
       cell.innerHTML = `<strong>${day.short}</strong>${done}/${total}`;
       daysWrap.appendChild(cell);
     });
@@ -673,13 +731,13 @@ async function syncTaskToSheet(item, done) {
   const response = await fetch(SCRIPT_URL, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'text/plain;charset=utf-8'
     },
     body: JSON.stringify(payload)
   });
 
   if (!response.ok) {
-    throw new Error('Sync failed');
+    throw new Error(`Sync failed (${response.status})`);
   }
   const data = await response.json();
   if (!data.ok) {
@@ -693,6 +751,16 @@ function setConnectionStatus(text, variant) {
   if (variant) {
     connectionStatusEl.classList.add(variant);
   }
+}
+
+function showToast(message) {
+  if (!toastEl) return;
+  toastEl.textContent = message;
+  toastEl.classList.add('is-visible');
+  clearTimeout(showToast._timer);
+  showToast._timer = setTimeout(() => {
+    toastEl.classList.remove('is-visible');
+  }, 2200);
 }
 
 function getInitialDayIndex(days) {
@@ -797,8 +865,54 @@ personCardsEl.addEventListener('change', async (event) => {
       updateOverviewCounts();
       updateOverallProgress();
       setConnectionStatus('Sync error - try again', 'is-error');
+      showToast('Sync error - try again.');
     }
   }
+});
+
+personCardsEl.addEventListener('click', async (event) => {
+  const collapseBtn = event.target.closest('.collapse-btn');
+  if (collapseBtn) {
+    const personName = collapseBtn.dataset.personName;
+    if (!personName) return;
+    const nextState = !state.collapsed[personName];
+    state.collapsed[personName] = nextState;
+    saveUiState();
+    renderPersonCards();
+    return;
+  }
+
+  const remindBtn = event.target.closest('.remind-btn');
+  if (!remindBtn) return;
+  const personName = remindBtn.dataset.personName;
+  const dayLabel = remindBtn.dataset.dayLabel;
+  const task = remindBtn.dataset.task;
+  if (!personName || !task) return;
+
+  const reminderText = `${personName} • ${task} (${dayLabel})`;
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: 'Chore reminder',
+        text: reminderText
+      });
+      return;
+    } catch (error) {
+      console.warn('Share cancelled or failed', error);
+    }
+  }
+
+  if (navigator.clipboard) {
+    try {
+      await navigator.clipboard.writeText(reminderText);
+      showToast('Copied reminder text.');
+      return;
+    } catch (error) {
+      console.warn('Clipboard write failed', error);
+    }
+  }
+
+  showToast('Share not available on this device.');
 });
 
 dayChipsEl.addEventListener('click', (event) => {

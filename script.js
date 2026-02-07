@@ -1,5 +1,8 @@
-const weekStartDate = new Date(2026, 1, 1);
-const rotationWeek = 2;
+const CONFIG = window.CHORE_CONFIG || {};
+const SCRIPT_URL = CONFIG.scriptUrl || '';
+const TOKEN = CONFIG.token || '';
+const MAX_TASKS_PER_PERSON_PER_DAY = 4;
+
 const dayNames = [
   'Sunday',
   'Monday',
@@ -10,68 +13,62 @@ const dayNames = [
   'Saturday'
 ];
 
-const people = [
-  {
-    name: 'Tatian',
-    cluster: 'Floors & Surfaces',
-    tasks: {
-      Sunday: ['Living room reset', 'Quick sweep high-traffic'],
-      Monday: ['Wipe counters + table', 'Spot clean spills'],
-      Tuesday: ['Vacuum/sweep main area', 'Wipe handles'],
-      Wednesday: ['Bathrooms: wipe sinks + mirrors', 'Swap hand towels'],
-      Thursday: ['Mop or swiffer kitchen', 'Entryway reset'],
-      Friday: ['Light tidy only', 'No deep cleaning'],
-      Saturday: ['Dust/wipe surfaces', 'Vacuum bedrooms (quick)']
-    }
-  },
-  {
-    name: 'Tamara',
-    cluster: 'Laundry & Rooms',
-    tasks: {
-      Sunday: ['Sort laundry + start 1 load', 'Room reset (15 min)'],
-      Monday: ['Move laundry + fold 10 min', 'Put away'],
-      Tuesday: ['Start/finish laundry load', 'Bedding check'],
-      Wednesday: ['Fold + distribute', 'Clear bedroom floors'],
-      Thursday: ['Catch-up laundry', 'Towels/linens'],
-      Friday: ['Light reset only', 'No laundry'],
-      Saturday: ['Deep room reset (30 min)', 'Donate bag if needed']
-    }
-  },
-  {
-    name: 'Hope (19)',
-    cluster: 'Trash, Plants & Outdoors',
-    tasks: {
-      Sunday: ['Take out kitchen trash', 'Check recycling'],
-      Monday: ['Bins/cans check', 'Bring in if needed'],
-      Tuesday: ['Water plants (as needed)', 'Porch/entry tidy'],
-      Wednesday: ['Trash + compost check', 'Pet area reset'],
-      Thursday: ['Take out all trash', 'Yard quick scan'],
-      Friday: ['Light reset only', 'No outside'],
-      Saturday: ['Recycling breakdown', 'Outdoor sweep (10 min)']
-    }
-  },
-  {
-    name: 'Abby (15)',
-    cluster: 'Food (Lite)',
-    tasks: {
-      Sunday: ['Pick 1 snack item to prep', 'Put away your food stuff'],
-      Monday: ['Pack your lunch item', 'Wipe your spot'],
-      Tuesday: ['Pack your lunch item', 'Dish to dishwasher'],
-      Wednesday: ['Set table OR clear table', 'Put leftovers away (small)'],
-      Thursday: ['Pack your lunch item', 'Wipe counters (2 min)'],
-      Friday: ['Help choose dinner / dessert', 'Put cups away'],
-      Saturday: ['Restock 1 snack', 'Put dishes away (5 min)']
-    }
-  }
+const PERSON_ORDER = ['Tatian', 'Tamara', 'Hope (19)', 'Abby (15)'];
+
+const ABBY_TASKS = [
+  'Put backpacks away',
+  'Dirty clothes bin or worn but not dirty bin',
+  'Gather soccer stuff for next day',
+  'House chore choice (choose: dishes, counters/table, garbage, recycling, sweep kitchen)'
 ];
 
-const weekKey = `${weekStartDate.getFullYear()}-${String(weekStartDate.getMonth() + 1).padStart(2, '0')}-${String(weekStartDate.getDate()).padStart(2, '0')}`;
-const appStateKey = `chore-map-${weekKey}`;
+const HOPE_TASKS = [
+  'Unpack lunch box - wash thermos',
+  'House chore choice #1 (choose: dishes, counters/table, garbage, recycling, sweep kitchen)',
+  'House chore choice #2 (choose: dishes, counters/table, garbage, recycling, sweep kitchen)',
+  'House chore choice #3 (choose: dishes, counters/table, garbage, recycling, sweep kitchen)'
+];
+
+const VACUUM_ROOMS = ['Entry way', 'Kitchen', 'Living room', 'Office', 'Hallway', 'Bathroom'];
+const MOP_ROOMS = ['Kitchen', 'Living room', 'Bathroom', 'Entry way', 'Hallway'];
+
+const SHARED_TASKS = [
+  'Lunch box clean up',
+  'Coffee mug cleanup',
+  'Mail sorting',
+  'Sweep kitchen',
+  'Spot mop spots in kitchen',
+  'Clean up pee',
+  'Pick up poop',
+  'Clean litter box',
+  'Wipe counters',
+  'Wipe down stove tops',
+  'Start dish washer',
+  'Clean dinner dishes',
+  'Clean dog bowls',
+  'Refill water for dogs and cats',
+  'Empty dishwasher',
+  'Wash pots and pans',
+  'Put away dishes from the dish strainer',
+  'Clean toilet',
+  'Clean bathroom counter',
+  'Take out bathroom garbage',
+  'Wipe down dining room table',
+  'Put shoes in bins'
+]
+  .concat(VACUUM_ROOMS.map((room) => `Vacuum: ${room}`))
+  .concat(MOP_ROOMS.map((room) => `Mop: ${room}`));
+
+const LAUNDRY_SCHEDULE = {
+  Friday: ['Hope (19)'],
+  Saturday: ['Tamara', 'Tatian'],
+  Sunday: ['Abby (15)']
+};
 
 const dayChipsEl = document.getElementById('dayChips');
 const personCardsEl = document.getElementById('personCards');
 const overviewGridEl = document.getElementById('overviewGrid');
-const clusterListEl = document.getElementById('clusterList');
+const laundryListEl = document.getElementById('laundryList');
 const selectedDateEl = document.getElementById('selectedDate');
 const weekMetaEl = document.getElementById('weekMeta');
 const weekStartEl = document.getElementById('weekStart');
@@ -79,119 +76,274 @@ const rotationWeekEl = document.getElementById('rotationWeek');
 const overallProgressEl = document.getElementById('overallProgress');
 const overallMetaEl = document.getElementById('overallMeta');
 const todayJumpBtn = document.getElementById('todayJump');
-
-const days = dayNames.map((name, index) => {
-  const date = new Date(weekStartDate);
-  date.setDate(weekStartDate.getDate() + index);
-  return {
-    key: name,
-    short: name.slice(0, 3),
-    date,
-    label: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    full: date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })
-  };
-});
+const connectionStatusEl = document.getElementById('connectionStatus');
+const appFooterEl = document.getElementById('appFooter');
 
 const state = {
-  selectedDayIndex: getInitialDayIndex(),
-  completed: {}
+  selectedDayIndex: 0,
+  completed: {},
+  syncEnabled: false,
+  weekKey: ''
 };
 
-hydrateState();
-renderAll();
+const dataStore = {
+  weekStartDate: new Date(2026, 1, 1),
+  rotationWeek: 2,
+  days: [],
+  people: [],
+  items: [],
+  itemsByPersonDay: new Map(),
+  itemsByDay: new Map(),
+  itemMap: new Map()
+};
 
-function hydrateState() {
-  const saved = localStorage.getItem(appStateKey);
-  if (!saved) return;
+init();
+
+async function init() {
+  if (SCRIPT_URL && !SCRIPT_URL.includes('PASTE_APPS_SCRIPT_URL_HERE')) {
+    setConnectionStatus('Connecting to sheet...', '');
+    try {
+      const payload = await fetchSheetData();
+      if (!payload || !Array.isArray(payload.items)) {
+        throw new Error('Sheet response missing items.');
+      }
+      applyData(payload, true);
+      setConnectionStatus('Connected to sheet', 'is-live');
+      appFooterEl.textContent = 'Changes sync to your Google Sheet.';
+      return;
+    } catch (error) {
+      console.warn('Sheet connection failed, using fallback.', error);
+      setConnectionStatus('Using local data', 'is-error');
+      appFooterEl.textContent = 'Connect Apps Script to sync changes.';
+    }
+  } else {
+    setConnectionStatus('Add Apps Script URL to sync', 'is-error');
+    appFooterEl.textContent = 'Connect Apps Script to sync changes.';
+  }
+
+  const fallback = buildFallbackPayload();
+  applyData(fallback, false);
+}
+
+function buildFallbackPayload() {
+  const weekStartDate = new Date(2026, 1, 1);
+  const { tatian, tamara } = splitTasks(SHARED_TASKS);
+  const templateTasks = {
+    Tatian: tatian,
+    Tamara: tamara,
+    'Hope (19)': HOPE_TASKS,
+    'Abby (15)': ABBY_TASKS
+  };
+
+  const items = [];
+  dayNames.forEach((day, dayIndex) => {
+    PERSON_ORDER.forEach((person) => {
+      const tasks = templateTasks[person] || [];
+      const hasLaundry = (LAUNDRY_SCHEDULE[day] || []).includes(person);
+      const selected = selectTasksForDay(tasks, dayIndex, MAX_TASKS_PER_PERSON_PER_DAY);
+      const dailyTasks = hasLaundry
+        ? ['Laundry'].concat(selected.slice(0, Math.max(0, MAX_TASKS_PER_PERSON_PER_DAY - 1)))
+        : selected.slice(0, MAX_TASKS_PER_PERSON_PER_DAY);
+
+      dailyTasks.forEach((task, index) => {
+        items.push({
+          id: `local-${person}-${day}-${index}`,
+          row: null,
+          person,
+          day,
+          task,
+          done: false
+        });
+      });
+    });
+  });
+
+  return {
+    weekStart: formatDateKey(weekStartDate),
+    rotationWeek: getRotationWeek(weekStartDate),
+    items
+  };
+}
+
+async function fetchSheetData() {
+  const url = new URL(SCRIPT_URL);
+  url.searchParams.set('action', 'getWeek');
+  if (TOKEN) {
+    url.searchParams.set('token', TOKEN);
+  }
+
+  const response = await fetch(url.toString());
+  if (!response.ok) {
+    throw new Error(`Sheet request failed: ${response.status}`);
+  }
+  const payload = await response.json();
+  if (!payload.ok) {
+    throw new Error(payload.error || 'Sheet response not ok.');
+  }
+  return payload;
+}
+
+function applyData(payload, syncEnabled) {
+  const weekStartDate = parseDate(payload.weekStart) || new Date(2026, 1, 1);
+  dataStore.weekStartDate = weekStartDate;
+  dataStore.rotationWeek = payload.rotationWeek || getRotationWeek(weekStartDate);
+  dataStore.days = buildDays(weekStartDate);
+  state.weekKey = formatDateKey(weekStartDate);
+  state.syncEnabled = syncEnabled;
+
+  const items = (payload.items || [])
+    .map((item) => normalizeItem(item))
+    .filter((item) => item !== null);
+
+  items.sort((a, b) => (a.row || 0) - (b.row || 0));
+
+  dataStore.items = items;
+  buildIndexes(items);
+  setPeople(items);
+  hydrateSelectedDay();
+  hydrateCompletion(items, syncEnabled);
+  renderAll();
+}
+
+function normalizeItem(item) {
+  const person = String(item.person || '').trim();
+  const dayName = normalizeDayName(item.day);
+  if (!person || !dayName) return null;
+  const dayIndex = dayNames.indexOf(dayName);
+  return {
+    id: item.row ? String(item.row) : String(item.id || `${person}-${dayName}-${item.task}`),
+    row: item.row ? Number(item.row) : null,
+    person,
+    day: dayName,
+    dayIndex,
+    task: String(item.task || '').trim(),
+    done: Boolean(item.done)
+  };
+}
+
+function normalizeDayName(day) {
+  if (!day) return null;
+  const cleaned = String(day).trim().toLowerCase();
+  for (const name of dayNames) {
+    if (name.toLowerCase() === cleaned) return name;
+    if (name.slice(0, 3).toLowerCase() === cleaned) return name;
+  }
+  return null;
+}
+
+function buildDays(weekStartDate) {
+  return dayNames.map((name, index) => {
+    const date = new Date(weekStartDate);
+    date.setDate(weekStartDate.getDate() + index);
+    return {
+      key: name,
+      short: name.slice(0, 3),
+      date,
+      label: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      full: date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })
+    };
+  });
+}
+
+function buildIndexes(items) {
+  dataStore.itemsByPersonDay = new Map();
+  dataStore.itemsByDay = new Map();
+  dataStore.itemMap = new Map();
+
+  items.forEach((item) => {
+    dataStore.itemMap.set(item.id, item);
+    const dayKey = String(item.dayIndex);
+    if (!dataStore.itemsByDay.has(dayKey)) {
+      dataStore.itemsByDay.set(dayKey, []);
+    }
+    dataStore.itemsByDay.get(dayKey).push(item);
+  });
+}
+
+function setPeople(items) {
+  const found = [];
+  items.forEach((item) => {
+    if (!found.includes(item.person)) {
+      found.push(item.person);
+    }
+  });
+
+  const ordered = PERSON_ORDER.filter((name) => found.includes(name));
+  const extras = found.filter((name) => !ordered.includes(name));
+  const people = ordered.concat(extras).map((name) => ({
+    name,
+    tag: 'Daily chores'
+  }));
+
+  const personIndexMap = new Map();
+  people.forEach((person, index) => {
+    personIndexMap.set(person.name, index);
+  });
+
+  dataStore.itemsByPersonDay = new Map();
+  items.forEach((item) => {
+    const personIndex = personIndexMap.get(item.person);
+    if (personIndex === undefined) return;
+    const key = `${personIndex}-${item.dayIndex}`;
+    if (!dataStore.itemsByPersonDay.has(key)) {
+      dataStore.itemsByPersonDay.set(key, []);
+    }
+    dataStore.itemsByPersonDay.get(key).push(item);
+  });
+
+  dataStore.people = people;
+}
+
+function hydrateSelectedDay() {
+  const saved = loadState();
+  if (saved && typeof saved.selectedDayIndex === 'number') {
+    state.selectedDayIndex = clamp(saved.selectedDayIndex, 0, 6);
+  } else {
+    state.selectedDayIndex = getInitialDayIndex(dataStore.days);
+  }
+}
+
+function hydrateCompletion(items, syncEnabled) {
+  if (syncEnabled) {
+    state.completed = {};
+    items.forEach((item) => {
+      if (item.done) state.completed[item.id] = true;
+    });
+    return;
+  }
+
+  const saved = loadState();
+  if (saved && saved.completed) {
+    state.completed = saved.completed;
+    return;
+  }
+
+  state.completed = {};
+  items.forEach((item) => {
+    if (item.done) state.completed[item.id] = true;
+  });
+}
+
+function loadState() {
+  if (!state.weekKey) return null;
+  const saved = localStorage.getItem(`chore-map-${state.weekKey}`);
+  if (!saved) return null;
   try {
-    const parsed = JSON.parse(saved);
-    if (typeof parsed.selectedDayIndex === 'number') {
-      state.selectedDayIndex = clamp(parsed.selectedDayIndex, 0, 6);
-    }
-    if (parsed.completed && typeof parsed.completed === 'object') {
-      state.completed = parsed.completed;
-    }
+    return JSON.parse(saved);
   } catch (error) {
-    console.warn('Unable to load saved chore data.', error);
+    return null;
   }
 }
 
 function saveState() {
-  localStorage.setItem(appStateKey, JSON.stringify({
-    selectedDayIndex: state.selectedDayIndex,
-    completed: state.completed
-  }));
-}
-
-function getInitialDayIndex() {
-  const today = new Date();
-  for (let i = 0; i < days.length; i += 1) {
-    const day = days[i];
-    if (
-      day.date.getFullYear() === today.getFullYear() &&
-      day.date.getMonth() === today.getMonth() &&
-      day.date.getDate() === today.getDate()
-    ) {
-      return i;
-    }
-  }
-  return days.length - 1;
-}
-
-function clamp(value, min, max) {
-  return Math.min(Math.max(value, min), max);
-}
-
-function taskId(personIndex, dayIndex, taskIndex) {
-  return `task-${personIndex}-${dayIndex}-${taskIndex}`;
-}
-
-function isTaskDone(id) {
-  return Boolean(state.completed[id]);
-}
-
-function setTaskDone(id, done) {
-  if (done) {
-    state.completed[id] = true;
-  } else {
-    delete state.completed[id];
-  }
-  saveState();
-}
-
-function getDayTotals(dayIndex) {
-  let total = 0;
-  let done = 0;
-  people.forEach((person, personIndex) => {
-    const tasks = person.tasks[days[dayIndex].key] || [];
-    tasks.forEach((_, taskIndex) => {
-      total += 1;
-      if (isTaskDone(taskId(personIndex, dayIndex, taskIndex))) {
-        done += 1;
-      }
-    });
-  });
-  return { done, total };
-}
-
-function getPersonDayTotals(personIndex, dayIndex) {
-  const tasks = people[personIndex].tasks[days[dayIndex].key] || [];
-  const total = tasks.length;
-  const done = tasks.reduce((count, _, taskIndex) => {
-    return count + (isTaskDone(taskId(personIndex, dayIndex, taskIndex)) ? 1 : 0);
-  }, 0);
-  return { done, total };
-}
-
-function getWeekTotals() {
-  let total = 0;
-  let done = 0;
-  for (let dayIndex = 0; dayIndex < days.length; dayIndex += 1) {
-    const dayTotals = getDayTotals(dayIndex);
-    total += dayTotals.total;
-    done += dayTotals.done;
-  }
-  return { done, total };
+  if (!state.weekKey || state.syncEnabled) return;
+  localStorage.setItem(
+    `chore-map-${state.weekKey}`,
+    JSON.stringify({
+      selectedDayIndex: state.selectedDayIndex,
+      completed: state.completed
+    })
+  );
 }
 
 function renderAll() {
@@ -199,33 +351,34 @@ function renderAll() {
   renderDayChips();
   renderPersonCards();
   renderOverview();
-  renderClusters();
+  renderLaundry();
   updateSelectedDate();
   updateOverallProgress();
 }
 
 function renderHeader() {
-  const weekEnd = days[days.length - 1].date;
+  const weekEnd = dataStore.days[dataStore.days.length - 1].date;
   const year = weekEnd.getFullYear();
-  const startMonth = weekStartDate.toLocaleDateString('en-US', { month: 'short' });
+  const startMonth = dataStore.weekStartDate.toLocaleDateString('en-US', { month: 'short' });
   const endMonth = weekEnd.toLocaleDateString('en-US', { month: 'short' });
-  const startDay = weekStartDate.getDate();
+  const startDay = dataStore.weekStartDate.getDate();
   const endDay = weekEnd.getDate();
   const rangeLabel = startMonth === endMonth
     ? `${startMonth} ${startDay}-${endDay}, ${year}`
     : `${startMonth} ${startDay} - ${endMonth} ${endDay}, ${year}`;
-  weekMetaEl.textContent = `Week of ${rangeLabel} | Rotation Week ${rotationWeek}`;
-  weekStartEl.textContent = weekStartDate.toLocaleDateString('en-US', {
+
+  weekMetaEl.textContent = `Week of ${rangeLabel} | Rotation Week ${dataStore.rotationWeek}`;
+  weekStartEl.textContent = dataStore.weekStartDate.toLocaleDateString('en-US', {
     month: 'long',
     day: 'numeric',
     year: 'numeric'
   });
-  rotationWeekEl.textContent = rotationWeek;
+  rotationWeekEl.textContent = dataStore.rotationWeek;
 }
 
 function renderDayChips() {
   dayChipsEl.innerHTML = '';
-  days.forEach((day, index) => {
+  dataStore.days.forEach((day, index) => {
     const { done, total } = getDayTotals(index);
     const chip = document.createElement('button');
     chip.className = 'day-chip';
@@ -244,9 +397,9 @@ function renderDayChips() {
 }
 
 function renderPersonCards() {
-  const day = days[state.selectedDayIndex].key;
+  const day = dataStore.days[state.selectedDayIndex];
   personCardsEl.innerHTML = '';
-  people.forEach((person, personIndex) => {
+  dataStore.people.forEach((person, personIndex) => {
     const { done, total } = getPersonDayTotals(personIndex, state.selectedDayIndex);
     const card = document.createElement('article');
     card.className = 'person-card';
@@ -260,13 +413,12 @@ function renderPersonCards() {
     nameEl.className = 'person-name';
     nameEl.textContent = person.name;
 
-    const clusterEl = document.createElement('div');
-    clusterEl.className = 'cluster-tag';
-    clusterEl.dataset.cluster = person.cluster;
-    clusterEl.textContent = person.cluster;
+    const tagEl = document.createElement('div');
+    tagEl.className = 'cluster-tag';
+    tagEl.textContent = person.tag || 'Daily chores';
 
     titleWrap.appendChild(nameEl);
-    titleWrap.appendChild(clusterEl);
+    titleWrap.appendChild(tagEl);
 
     const progressEl = document.createElement('div');
     progressEl.className = 'progress-pill';
@@ -279,9 +431,9 @@ function renderPersonCards() {
     const list = document.createElement('div');
     list.className = 'task-list';
 
-    const tasks = person.tasks[day] || [];
-    tasks.forEach((task, taskIndex) => {
-      const id = taskId(personIndex, state.selectedDayIndex, taskIndex);
+    const tasks = getVisibleItemsForPersonDay(personIndex, day.key);
+    tasks.forEach((task) => {
+      const id = task.id;
       const item = document.createElement('label');
       item.className = 'task-item';
       if (isTaskDone(id)) {
@@ -294,9 +446,12 @@ function renderPersonCards() {
       input.id = id;
       input.checked = isTaskDone(id);
       input.dataset.taskId = id;
+      if (!state.syncEnabled && !task.row) {
+        input.dataset.localOnly = 'true';
+      }
 
       const text = document.createElement('span');
-      text.textContent = task;
+      text.textContent = task.task;
 
       item.appendChild(input);
       item.appendChild(text);
@@ -311,7 +466,7 @@ function renderPersonCards() {
 
 function renderOverview() {
   overviewGridEl.innerHTML = '';
-  people.forEach((person, personIndex) => {
+  dataStore.people.forEach((person, personIndex) => {
     const row = document.createElement('div');
     row.className = 'overview-row';
 
@@ -322,7 +477,7 @@ function renderOverview() {
     const daysWrap = document.createElement('div');
     daysWrap.className = 'overview-days';
 
-    days.forEach((day, dayIndex) => {
+    dataStore.days.forEach((day, dayIndex) => {
       const { done, total } = getPersonDayTotals(personIndex, dayIndex);
       const cell = document.createElement('button');
       cell.type = 'button';
@@ -340,26 +495,49 @@ function renderOverview() {
   });
 }
 
-function renderClusters() {
-  clusterListEl.innerHTML = '';
-  people.forEach((person) => {
+function renderLaundry() {
+  laundryListEl.innerHTML = '';
+  const schedule = buildLaundrySchedule();
+  const entries = Object.entries(schedule);
+  if (!entries.length) {
+    const item = document.createElement('li');
+    item.className = 'cluster-item';
+    item.textContent = 'No laundry tasks listed yet.';
+    laundryListEl.appendChild(item);
+    return;
+  }
+
+  entries.forEach(([day, people]) => {
     const item = document.createElement('li');
     item.className = 'cluster-item';
 
-    const name = document.createElement('strong');
-    name.textContent = person.name;
+    const dayLabel = document.createElement('strong');
+    dayLabel.textContent = day;
 
-    const cluster = document.createElement('span');
-    cluster.textContent = person.cluster;
+    const names = document.createElement('span');
+    names.textContent = people.join(', ');
 
-    item.appendChild(name);
-    item.appendChild(cluster);
-    clusterListEl.appendChild(item);
+    item.appendChild(dayLabel);
+    item.appendChild(names);
+    laundryListEl.appendChild(item);
   });
 }
 
+function buildLaundrySchedule() {
+  const schedule = {};
+  dataStore.items.forEach((item) => {
+    if (!item.task.toLowerCase().includes('laundry')) return;
+    const dayName = dayNames[item.dayIndex];
+    if (!schedule[dayName]) schedule[dayName] = [];
+    if (!schedule[dayName].includes(item.person)) {
+      schedule[dayName].push(item.person);
+    }
+  });
+  return schedule;
+}
+
 function updateSelectedDate() {
-  selectedDateEl.textContent = days[state.selectedDayIndex].full;
+  selectedDateEl.textContent = dataStore.days[state.selectedDayIndex].full;
 }
 
 function updateOverallProgress() {
@@ -394,7 +572,7 @@ function updateOverviewCounts() {
     const dayIndex = Number(cell.dataset.dayIndex);
     const { done, total } = getPersonDayTotals(personIndex, dayIndex);
     cell.dataset.level = getCompletionLevel(done, total);
-    cell.innerHTML = `<strong>${days[dayIndex].short}</strong>${done}/${total}`;
+    cell.innerHTML = `<strong>${dataStore.days[dayIndex].short}</strong>${done}/${total}`;
   });
 }
 
@@ -406,7 +584,7 @@ function getCompletionLevel(done, total) {
 }
 
 function setSelectedDay(dayIndex) {
-  state.selectedDayIndex = clamp(dayIndex, 0, days.length - 1);
+  state.selectedDayIndex = clamp(dayIndex, 0, dataStore.days.length - 1);
   saveState();
   renderDayChips();
   renderPersonCards();
@@ -414,19 +592,213 @@ function setSelectedDay(dayIndex) {
   updatePersonProgress();
 }
 
-personCardsEl.addEventListener('change', (event) => {
+function getVisibleItemsForPersonDay(personIndex, dayKey) {
+  const dayIndex = dayNames.indexOf(dayKey);
+  const key = `${personIndex}-${dayIndex}`;
+  const items = dataStore.itemsByPersonDay.get(key) || [];
+  if (!items.length) return [];
+
+  const selected = [];
+  const extras = [];
+  items.forEach((item) => {
+    if (isLaundryTask(item)) {
+      selected.push(item);
+    } else {
+      extras.push(item);
+    }
+  });
+
+  const remaining = Math.max(0, MAX_TASKS_PER_PERSON_PER_DAY - selected.length);
+  return selected.concat(extras.slice(0, remaining));
+}
+
+function getDayTotals(dayIndex) {
+  let total = 0;
+  let done = 0;
+  dataStore.people.forEach((_, personIndex) => {
+    const dayName = dayNames[dayIndex];
+    const items = getVisibleItemsForPersonDay(personIndex, dayName);
+    items.forEach((item) => {
+      total += 1;
+      if (isTaskDone(item.id)) done += 1;
+    });
+  });
+  return { done, total };
+}
+
+function getPersonDayTotals(personIndex, dayIndex) {
+  const dayName = dayNames[dayIndex];
+  const items = getVisibleItemsForPersonDay(personIndex, dayName);
+  const total = items.length;
+  const done = items.reduce((count, item) => count + (isTaskDone(item.id) ? 1 : 0), 0);
+  return { done, total };
+}
+
+function getWeekTotals() {
+  let total = 0;
+  let done = 0;
+  dataStore.days.forEach((day, dayIndex) => {
+    dataStore.people.forEach((_, personIndex) => {
+      const items = getVisibleItemsForPersonDay(personIndex, day.key);
+      items.forEach((item) => {
+        total += 1;
+        if (isTaskDone(item.id)) done += 1;
+      });
+    });
+  });
+  return { done, total };
+}
+
+function isTaskDone(id) {
+  return Boolean(state.completed[id]);
+}
+
+function setTaskDoneLocal(id, done) {
+  if (done) {
+    state.completed[id] = true;
+  } else {
+    delete state.completed[id];
+  }
+}
+
+async function syncTaskToSheet(item, done) {
+  if (!state.syncEnabled || !item.row) return;
+  const payload = {
+    action: 'updateTask',
+    token: TOKEN,
+    row: item.row,
+    done
+  };
+
+  const response = await fetch(SCRIPT_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    throw new Error('Sync failed');
+  }
+  const data = await response.json();
+  if (!data.ok) {
+    throw new Error(data.error || 'Sync failed');
+  }
+}
+
+function setConnectionStatus(text, variant) {
+  connectionStatusEl.textContent = text;
+  connectionStatusEl.classList.remove('is-live', 'is-error');
+  if (variant) {
+    connectionStatusEl.classList.add(variant);
+  }
+}
+
+function getInitialDayIndex(days) {
+  const today = new Date();
+  for (let i = 0; i < days.length; i += 1) {
+    const day = days[i].date;
+    if (
+      day.getFullYear() === today.getFullYear() &&
+      day.getMonth() === today.getMonth() &&
+      day.getDate() === today.getDate()
+    ) {
+      return i;
+    }
+  }
+  return days.length - 1;
+}
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function splitTasks(tasks) {
+  const tatian = [];
+  const tamara = [];
+  tasks.forEach((task, index) => {
+    if (index % 2 === 0) {
+      tatian.push(task);
+    } else {
+      tamara.push(task);
+    }
+  });
+  return { tatian, tamara };
+}
+
+function selectTasksForDay(tasks, dayIndex, max) {
+  if (!tasks.length) return [];
+  if (tasks.length <= max) return tasks.slice();
+  const start = (dayIndex * max) % tasks.length;
+  const selected = [];
+  for (let i = 0; i < max; i += 1) {
+    selected.push(tasks[(start + i) % tasks.length]);
+  }
+  return selected;
+}
+
+function formatDateKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function parseDate(value) {
+  if (!value) return null;
+  const parsed = new Date(`${value}T00:00:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function getRotationWeek(date) {
+  const start = new Date(date.getFullYear(), 0, 1);
+  const dayOffset = start.getDay();
+  const diffDays = Math.floor((date - start) / (1000 * 60 * 60 * 24));
+  const weekNum = Math.floor((diffDays + dayOffset) / 7) + 1;
+  return ((weekNum - 1) % 4) + 1;
+}
+
+function isLaundryTask(item) {
+  return item.task.toLowerCase().includes('laundry');
+}
+
+personCardsEl.addEventListener('change', async (event) => {
   const target = event.target;
   if (!(target instanceof HTMLInputElement)) return;
   if (!target.dataset.taskId) return;
-  setTaskDone(target.dataset.taskId, target.checked);
-  const item = target.closest('.task-item');
-  if (item) {
-    item.classList.toggle('is-done', target.checked);
+  const id = target.dataset.taskId;
+  const item = dataStore.itemMap.get(id);
+  if (!item) return;
+
+  const nextDone = target.checked;
+  setTaskDoneLocal(id, nextDone);
+  const wrapper = target.closest('.task-item');
+  if (wrapper) {
+    wrapper.classList.toggle('is-done', nextDone);
   }
+
   updateDayChipCounts();
   updatePersonProgress();
   updateOverviewCounts();
   updateOverallProgress();
+  saveState();
+
+  if (state.syncEnabled) {
+    try {
+      await syncTaskToSheet(item, nextDone);
+      setConnectionStatus('Connected to sheet', 'is-live');
+    } catch (error) {
+      console.warn('Sync failed', error);
+      setTaskDoneLocal(id, !nextDone);
+      target.checked = !nextDone;
+      if (wrapper) {
+        wrapper.classList.toggle('is-done', !nextDone);
+      }
+      updateDayChipCounts();
+      updatePersonProgress();
+      updateOverviewCounts();
+      updateOverallProgress();
+      setConnectionStatus('Sync error - try again', 'is-error');
+    }
+  }
 });
 
 dayChipsEl.addEventListener('click', (event) => {
@@ -442,5 +814,5 @@ overviewGridEl.addEventListener('click', (event) => {
 });
 
 todayJumpBtn.addEventListener('click', () => {
-  setSelectedDay(getInitialDayIndex());
+  setSelectedDay(getInitialDayIndex(dataStore.days));
 });

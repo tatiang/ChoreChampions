@@ -16,6 +16,7 @@
         <span class="eyebrow">Our Family Chore Map</span>
         <h1>This Week</h1>
         <p class="week-meta" id="weekMeta">Week of Feb 1-7, 2026 | Rotation Week 2</p>
+        <div class="connection-status" id="connectionStatus">Not connected</div>
       </div>
       <button class="ghost-btn" id="todayJump" type="button">Today</button>
     </header>
@@ -32,7 +33,7 @@
         </div>
         <div>
           <div class="label">Legend</div>
-          <div class="value">Lite = fewer/shorter tasks</div>
+          <div class="value">House chore choice = pick one: dishes, counters/table, garbage, recycling, sweep kitchen.</div>
         </div>
       </div>
       <div class="progress-wrap">
@@ -63,15 +64,21 @@
 
     <section class="rotation">
       <div class="section-title">
-        <h2>This Week's Clusters</h2>
-        <span>Helper view based on rotation</span>
+        <h2>Laundry Schedule</h2>
+        <span>Only on listed days</span>
       </div>
-      <ul class="cluster-list" id="clusterList"></ul>
+      <ul class="cluster-list" id="laundryList"></ul>
     </section>
 
-    <footer class="app-footer">Tap tasks to mark them complete. Progress stays on this device.</footer>
+    <footer class="app-footer" id="appFooter">Tap tasks to mark them complete.</footer>
   </div>
 
+  <script>
+    window.CHORE_CONFIG = {
+      scriptUrl: 'https://script.google.com/macros/s/AKfycbxOSjBHYIfWJeSKZ-UHwBiIcRm-kL28UitOHpM5viunWCRNfPNBgfsdjfA7mKMusn6Wfw/exec',
+      token: 'chore-2026-sunrise!'
+    };
+  </script>
   <script src="script.js"></script>
 </body>
 </html>

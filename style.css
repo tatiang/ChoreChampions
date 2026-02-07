@@ -87,6 +87,25 @@ body {
   margin-bottom: 18px;
 }
 
+.update-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 138, 91, 0.3);
+  background: rgba(255, 138, 91, 0.12);
+  font-size: 12px;
+  font-weight: 700;
+  color: #8a3c1d;
+  margin-bottom: 18px;
+}
+
+.update-banner[hidden] {
+  display: none;
+}
+
 .eyebrow {
   display: inline-flex;
   padding: 6px 12px;
@@ -367,14 +386,29 @@ h1 {
 }
 
 .collapse-btn {
+  width: 30px;
+  height: 30px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 4px 10px;
-  font-size: 11px;
-  font-weight: 700;
   background: #fff;
-  color: var(--muted);
   cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+.collapse-btn::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid #8a5a18;
+  border-bottom: 2px solid #8a5a18;
+  transform: rotate(-45deg);
+  transition: transform 0.2s ease;
+}
+
+.person-card.is-collapsed .collapse-btn::before {
+  transform: rotate(135deg);
 }
 
 .task-list {
@@ -415,15 +449,24 @@ h1 {
 }
 
 .remind-btn {
+  width: 34px;
+  height: 34px;
   border: 1px solid rgba(234, 223, 211, 0.9);
   background: #fff;
-  border-radius: 10px;
-  padding: 6px 10px;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--muted);
+  border-radius: 12px;
   cursor: pointer;
   align-self: center;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+.remind-btn svg {
+  width: 16px;
+  height: 16px;
+  stroke: #8a5a18;
+  stroke-width: 1.8;
+  fill: none;
 }
 
 .task-item.is-done {

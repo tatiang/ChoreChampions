@@ -2,6 +2,9 @@ const CONFIG = window.CHORE_CONFIG || {};
 const SCRIPT_URL = CONFIG.scriptUrl || '';
 const TOKEN = CONFIG.token || '';
 const MAX_TASKS_PER_PERSON_PER_DAY = 4;
+const REPO_OWNER = CONFIG.repoOwner || '';
+const REPO_NAME = CONFIG.repoName || '';
+const BUILD_TIME = CONFIG.buildTime ? new Date(CONFIG.buildTime) : null;
 
 const dayNames = [
   'Sunday',
@@ -79,6 +82,15 @@ const todayJumpBtn = document.getElementById('todayJump');
 const connectionStatusEl = document.getElementById('connectionStatus');
 const appFooterEl = document.getElementById('appFooter');
 const toastEl = document.getElementById('toast');
+const updateBannerEl = document.getElementById('updateBanner');
+const refreshBtnEl = document.getElementById('refreshBtn');
+
+const REMIND_ICON = `
+  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path d="M12 4.5c-3 0-5 2.2-5 5v3.6l-1.5 2.1h13L17 13.1V9.5c0-2.8-2-5-5-5Z"></path>
+    <path d="M9.5 18.2a2.5 2.5 0 0 0 5 0"></path>
+  </svg>
+`;
 
 const state = {
   selectedDayIndex: 0,
@@ -113,6 +125,7 @@ async function init() {
       applyData(payload, true);
       setConnectionStatus('Connected to sheet', 'is-live');
       appFooterEl.textContent = 'Changes sync to your Google Sheet.';
+      checkForUpdate();
       return;
     } catch (error) {
       console.warn('Sheet connection failed, using fallback.', error);
@@ -126,6 +139,7 @@ async function init() {
 
   const fallback = buildFallbackPayload();
   applyData(fallback, false);
+  checkForUpdate();
 }
 
 function buildFallbackPayload() {
@@ -463,7 +477,8 @@ function renderPersonCards() {
     collapseBtn.className = 'collapse-btn';
     collapseBtn.dataset.personName = person.name;
     collapseBtn.setAttribute('aria-expanded', String(!state.collapsed[person.name]));
-    collapseBtn.textContent = state.collapsed[person.name] ? 'Expand' : 'Collapse';
+    collapseBtn.setAttribute('aria-label', `${state.collapsed[person.name] ? 'Expand' : 'Collapse'} chores for ${person.name}`);
+    collapseBtn.setAttribute('title', state.collapsed[person.name] ? 'Expand chores' : 'Collapse chores');
 
     header.appendChild(titleWrap);
     header.appendChild(progressEl);
@@ -503,7 +518,9 @@ function renderPersonCards() {
       const remindBtn = document.createElement('button');
       remindBtn.type = 'button';
       remindBtn.className = 'remind-btn';
-      remindBtn.textContent = 'Remind';
+      remindBtn.setAttribute('aria-label', 'Set reminder');
+      remindBtn.setAttribute('title', 'Set reminder');
+      remindBtn.innerHTML = REMIND_ICON;
       remindBtn.dataset.personName = person.name;
       remindBtn.dataset.dayLabel = day.full;
       remindBtn.dataset.task = task.task;
@@ -763,6 +780,33 @@ function showToast(message) {
   }, 2200);
 }
 
+async function checkForUpdate() {
+  if (!REPO_OWNER || !REPO_NAME || !BUILD_TIME || Number.isNaN(BUILD_TIME.getTime())) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/commits/main`, {
+      headers: { Accept: 'application/vnd.github+json' }
+    });
+    if (!response.ok) return;
+    const data = await response.json();
+    const latestDate = data && data.commit && data.commit.committer && data.commit.committer.date;
+    if (!latestDate) return;
+    const latest = new Date(latestDate);
+    if (latest > BUILD_TIME) {
+      showUpdateBanner();
+    }
+  } catch (error) {
+    console.warn('Update check failed', error);
+  }
+}
+
+function showUpdateBanner() {
+  if (!updateBannerEl) return;
+  updateBannerEl.hidden = false;
+}
+
 function getInitialDayIndex(days) {
   const today = new Date();
   for (let i = 0; i < days.length; i += 1) {
@@ -930,3 +974,9 @@ overviewGridEl.addEventListener('click', (event) => {
 todayJumpBtn.addEventListener('click', () => {
   setSelectedDay(getInitialDayIndex(dataStore.days));
 });
+
+if (refreshBtnEl) {
+  refreshBtnEl.addEventListener('click', () => {
+    window.location.reload();
+  });
+}

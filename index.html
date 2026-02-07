@@ -21,6 +21,11 @@
       <button class="ghost-btn" id="todayJump" type="button">Today</button>
     </header>
 
+    <div class="update-banner" id="updateBanner" hidden>
+      <div>New update available.</div>
+      <button class="ghost-btn" id="refreshBtn" type="button">Refresh</button>
+    </div>
+
     <section class="week-card">
       <div class="week-info">
         <div>
@@ -77,7 +82,10 @@
   <script>
     window.CHORE_CONFIG = {
       scriptUrl: 'https://script.google.com/macros/s/AKfycbxOSjBHYIfWJeSKZ-UHwBiIcRm-kL28UitOHpM5viunWCRNfPNBgfsdjfA7mKMusn6Wfw/exec',
-      token: 'chore-2026-sunrise!'
+      token: 'chore-2026-sunrise!',
+      repoOwner: 'tatiang',
+      repoName: 'ChoreChampions',
+      buildTime: '2026-02-07T23:50:31Z'
     };
   </script>
   <script src="script.js"></script>

@@ -75,6 +75,7 @@ const dayChipsEl = document.getElementById('dayChips');
 const personCardsEl = document.getElementById('personCards');
 const summaryBodyEl = document.getElementById('summaryBody');
 const summaryToggleEl = document.getElementById('summaryToggle');
+const summaryHeaderEl = document.querySelector('.summary-header');
 const laundryListEl = document.getElementById('laundryList');
 const weekMetaEl = document.getElementById('weekMeta');
 const rotationWeekEl = document.getElementById('rotationWeek');
@@ -90,6 +91,7 @@ const settingsModalEl = document.getElementById('settingsModal');
 const openSettingsBtn = document.getElementById('openSettings');
 const closeSettingsBtn = document.getElementById('closeSettings');
 const textSizeRangeEl = document.getElementById('textSizeRange');
+const textSizeValueEl = document.getElementById('textSizeValue');
 const toggleHighContrastEl = document.getElementById('toggleHighContrast');
 const themeInputs = Array.from(document.querySelectorAll('input[name="theme"]'));
 const reminderModalEl = document.getElementById('reminderModal');
@@ -559,9 +561,14 @@ function renderSummary() {
   if (!summaryBodyEl) return;
   summaryBodyEl.innerHTML = '';
   summaryBodyEl.hidden = state.summaryCollapsed;
+  summaryBodyEl.style.display = state.summaryCollapsed ? 'none' : 'grid';
   if (summaryToggleEl) {
     summaryToggleEl.setAttribute('aria-expanded', String(!state.summaryCollapsed));
-    summaryToggleEl.textContent = state.summaryCollapsed ? '▾' : '▴';
+    summaryToggleEl.setAttribute(
+      'aria-label',
+      state.summaryCollapsed ? 'Expand weekly summary' : 'Collapse weekly summary'
+    );
+    summaryToggleEl.classList.toggle('is-collapsed', state.summaryCollapsed);
   }
 
   dataStore.people.forEach((person, personIndex) => {
@@ -797,6 +804,10 @@ function applySettings() {
   document.body.classList.toggle('high-contrast', state.settings.highContrast);
 
   if (textSizeRangeEl) textSizeRangeEl.value = String(size);
+  if (textSizeValueEl) {
+    const fontSize = window.getComputedStyle(document.body).fontSize;
+    textSizeValueEl.textContent = fontSize;
+  }
   if (toggleHighContrastEl) toggleHighContrastEl.checked = state.settings.highContrast;
   themeInputs.forEach((input) => {
     input.checked = input.value === state.settings.theme;
@@ -1015,9 +1026,14 @@ dayChipsEl.addEventListener('click', (event) => {
 
 if (summaryToggleEl) {
   summaryToggleEl.addEventListener('click', () => {
-    state.summaryCollapsed = !state.summaryCollapsed;
-    saveUiState();
-    renderSummary();
+    toggleSummary();
+  });
+}
+
+if (summaryHeaderEl) {
+  summaryHeaderEl.addEventListener('click', (event) => {
+    if (event.target.closest('button')) return;
+    toggleSummary();
   });
 }
 
@@ -1042,6 +1058,12 @@ if (refreshBtnEl) {
 function openSettings() {
   if (!settingsModalEl) return;
   settingsModalEl.hidden = false;
+}
+
+function toggleSummary() {
+  state.summaryCollapsed = !state.summaryCollapsed;
+  saveUiState();
+  renderSummary();
 }
 
 function closeSettings() {

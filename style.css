@@ -277,6 +277,12 @@ body {
   color: var(--ink);
 }
 
+.build-version {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
 .theme-picker {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

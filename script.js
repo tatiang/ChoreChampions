@@ -100,6 +100,7 @@ const reminderTimeEl = document.getElementById('reminderTime');
 const reminderShareBtn = document.getElementById('reminderShare');
 const reminderCancelBtn = document.getElementById('reminderCancel');
 const reminderCloseBtn = document.getElementById('closeReminder');
+const buildVersionEl = document.getElementById('buildVersion');
 
 const REMIND_ICON = `
   <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -808,10 +809,30 @@ function applySettings() {
     const fontSize = window.getComputedStyle(document.body).fontSize;
     textSizeValueEl.textContent = fontSize;
   }
+  if (buildVersionEl) {
+    buildVersionEl.textContent = getBuildLabel();
+  }
   if (toggleHighContrastEl) toggleHighContrastEl.checked = state.settings.highContrast;
   themeInputs.forEach((input) => {
     input.checked = input.value === state.settings.theme;
   });
+}
+
+function getBuildLabel() {
+  const sha = BUILD_SHA ? BUILD_SHA.slice(0, 7) : '';
+  const buildDate = (BUILD_TIME && !Number.isNaN(BUILD_TIME.getTime()))
+    ? BUILD_TIME
+    : new Date(document.lastModified);
+  const dateLabel = buildDate && !Number.isNaN(buildDate.getTime())
+    ? buildDate.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    })
+    : 'Unknown';
+  return sha ? `Commit ${sha} • ${dateLabel}` : `Built ${dateLabel}`;
 }
 
 async function checkForUpdate() {

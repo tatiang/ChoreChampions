@@ -403,12 +403,12 @@ h1 {
   height: 8px;
   border-right: 2px solid #8a5a18;
   border-bottom: 2px solid #8a5a18;
-  transform: rotate(-45deg);
+  transform: rotate(45deg);
   transition: transform 0.2s ease;
 }
 
 .person-card.is-collapsed .collapse-btn::before {
-  transform: rotate(135deg);
+  transform: rotate(-135deg);
 }
 
 .task-list {

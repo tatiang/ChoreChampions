@@ -100,13 +100,35 @@
           </button>
         </div>
 
-        <label class="toggle-row">
-          <span>Larger text</span>
-          <span class="toggle">
-            <input type="checkbox" id="toggleLargeText" />
-            <span class="toggle-slider"></span>
-          </span>
-        </label>
+        <div class="setting-block">
+          <div class="setting-title">Text size</div>
+          <div class="size-slider">
+            <span class="size-label">Smaller</span>
+            <input type="range" id="textSizeRange" min="0" max="2" step="1" />
+            <span class="size-label">Larger</span>
+          </div>
+        </div>
+
+        <div class="setting-block">
+          <div class="setting-title">Color theme</div>
+          <div class="theme-picker" role="radiogroup" aria-label="Color theme">
+            <label class="theme-option theme-warm">
+              <input type="radio" name="theme" value="warm" />
+              <span class="theme-swatch"></span>
+              <span class="theme-label">Warm</span>
+            </label>
+            <label class="theme-option theme-sage">
+              <input type="radio" name="theme" value="sage" />
+              <span class="theme-swatch"></span>
+              <span class="theme-label">Sage</span>
+            </label>
+            <label class="theme-option theme-slate">
+              <input type="radio" name="theme" value="slate" />
+              <span class="theme-swatch"></span>
+              <span class="theme-label">Slate</span>
+            </label>
+          </div>
+        </div>
 
         <label class="toggle-row">
           <span>Higher contrast</span>
@@ -125,7 +147,7 @@
       token: 'chore-2026-sunrise!',
       repoOwner: 'tatiang',
       repoName: 'FamilyChores',
-      buildTime: '2026-02-08T04:03:06Z',
+      buildTime: '2026-02-08T04:21:07Z',
       buildSha: ''
     };
   </script>

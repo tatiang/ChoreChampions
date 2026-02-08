@@ -89,8 +89,9 @@ const refreshBtnEl = document.getElementById('refreshBtn');
 const settingsModalEl = document.getElementById('settingsModal');
 const openSettingsBtn = document.getElementById('openSettings');
 const closeSettingsBtn = document.getElementById('closeSettings');
-const toggleLargeTextEl = document.getElementById('toggleLargeText');
+const textSizeRangeEl = document.getElementById('textSizeRange');
 const toggleHighContrastEl = document.getElementById('toggleHighContrast');
+const themeInputs = Array.from(document.querySelectorAll('input[name="theme"]'));
 
 const REMIND_ICON = `
   <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -106,8 +107,9 @@ const state = {
   weekKey: '',
   collapsed: {},
   settings: {
-    largeText: false,
-    highContrast: false
+    textSize: 1,
+    highContrast: false,
+    theme: 'warm'
   }
 };
 
@@ -354,8 +356,9 @@ function hydrateCollapsedState() {
 
   if (saved && saved.settings) {
     state.settings = {
-      largeText: Boolean(saved.settings.largeText),
-      highContrast: Boolean(saved.settings.highContrast)
+      textSize: Number.isFinite(saved.settings.textSize) ? saved.settings.textSize : 1,
+      highContrast: Boolean(saved.settings.highContrast),
+      theme: saved.settings.theme || 'warm'
     };
   }
 }
@@ -776,10 +779,18 @@ function showToast(message) {
 }
 
 function applySettings() {
-  document.body.classList.toggle('text-large', state.settings.largeText);
+  document.body.classList.remove('text-small', 'text-medium', 'text-large', 'theme-warm', 'theme-sage', 'theme-slate');
+  const size = clamp(Math.round(state.settings.textSize), 0, 2);
+  const sizeClass = size === 0 ? 'text-small' : size === 1 ? 'text-medium' : 'text-large';
+  document.body.classList.add(sizeClass);
+  document.body.classList.add(`theme-${state.settings.theme}`);
   document.body.classList.toggle('high-contrast', state.settings.highContrast);
-  if (toggleLargeTextEl) toggleLargeTextEl.checked = state.settings.largeText;
+
+  if (textSizeRangeEl) textSizeRangeEl.value = String(size);
   if (toggleHighContrastEl) toggleHighContrastEl.checked = state.settings.highContrast;
+  themeInputs.forEach((input) => {
+    input.checked = input.value === state.settings.theme;
+  });
 }
 
 async function checkForUpdate() {
@@ -857,12 +868,14 @@ function getTasksForPersonDay(person, dayIndex, templateTasks) {
   const dayName = dayNames[dayIndex];
   const weekday = dayIndex >= 1 && dayIndex <= 5;
   if (person === 'Abby') {
-    if (!weekday) return [];
-    return ABBY_DAILY.concat(pickRotating(KID_CHORE_POOL, dayIndex, 2, 0));
+    return weekday
+      ? ABBY_DAILY.concat(pickRotating(KID_CHORE_POOL, dayIndex, 2, 0))
+      : pickRotating(KID_CHORE_POOL, dayIndex, 4, 0);
   }
   if (person === 'Hope') {
-    if (!weekday) return [];
-    return HOPE_DAILY.concat(pickRotating(KID_CHORE_POOL, dayIndex, 2, 2));
+    return weekday
+      ? HOPE_DAILY.concat(pickRotating(KID_CHORE_POOL, dayIndex, 2, 2))
+      : pickRotating(KID_CHORE_POOL, dayIndex, 4, 2);
   }
   const tasks = templateTasks[person] || [];
   const hasLaundry = (LAUNDRY_SCHEDULE[dayName] || []).includes(person);
@@ -1047,14 +1060,6 @@ if (settingsModalEl) {
   });
 }
 
-if (toggleLargeTextEl) {
-  toggleLargeTextEl.addEventListener('change', () => {
-    state.settings.largeText = toggleLargeTextEl.checked;
-    applySettings();
-    saveUiState();
-  });
-}
-
 if (toggleHighContrastEl) {
   toggleHighContrastEl.addEventListener('change', () => {
     state.settings.highContrast = toggleHighContrastEl.checked;
@@ -1062,3 +1067,21 @@ if (toggleHighContrastEl) {
     saveUiState();
   });
 }
+
+if (textSizeRangeEl) {
+  textSizeRangeEl.addEventListener('input', () => {
+    state.settings.textSize = Number(textSizeRangeEl.value);
+    applySettings();
+    saveUiState();
+  });
+}
+
+themeInputs.forEach((input) => {
+  input.addEventListener('change', () => {
+    if (input.checked) {
+      state.settings.theme = input.value;
+      applySettings();
+      saveUiState();
+    }
+  });
+});

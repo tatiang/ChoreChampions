@@ -1,10 +1,10 @@
 const CONFIG = window.CHORE_CONFIG || {};
 const SCRIPT_URL = CONFIG.scriptUrl || '';
 const TOKEN = CONFIG.token || '';
-const MAX_TASKS_PER_PERSON_PER_DAY = 4;
 const REPO_OWNER = CONFIG.repoOwner || '';
 const REPO_NAME = CONFIG.repoName || '';
 const BUILD_TIME = CONFIG.buildTime ? new Date(CONFIG.buildTime) : null;
+const BUILD_SHA = CONFIG.buildSha || '';
 
 const dayNames = [
   'Sunday',
@@ -16,21 +16,23 @@ const dayNames = [
   'Saturday'
 ];
 
-const PERSON_ORDER = ['Tatian', 'Tamara', 'Hope (19)', 'Abby (15)'];
+const PERSON_ORDER = ['Tatian', 'Tamara', 'Hope', 'Abby'];
 
-const ABBY_TASKS = [
+const KID_CHORE_POOL = [
+  'Dishes',
+  'Counters or table',
+  'Garbage',
+  'Recycling',
+  'Sweep kitchen'
+];
+
+const ABBY_DAILY = [
   'Put backpacks away',
   'Dirty clothes bin or worn but not dirty bin',
-  'Gather soccer stuff for next day',
-  'House chore choice (choose: dishes, counters/table, garbage, recycling, sweep kitchen)'
+  'Gather soccer stuff for next day'
 ];
 
-const HOPE_TASKS = [
-  'Unpack lunch box - wash thermos',
-  'House chore choice #1 (choose: dishes, counters/table, garbage, recycling, sweep kitchen)',
-  'House chore choice #2 (choose: dishes, counters/table, garbage, recycling, sweep kitchen)',
-  'House chore choice #3 (choose: dishes, counters/table, garbage, recycling, sweep kitchen)'
-];
+const HOPE_DAILY = ['Unpack lunch box - wash thermos'];
 
 const VACUUM_ROOMS = ['Entry way', 'Kitchen', 'Living room', 'Office', 'Hallway', 'Bathroom'];
 const MOP_ROOMS = ['Kitchen', 'Living room', 'Bathroom', 'Entry way', 'Hallway'];
@@ -63,9 +65,9 @@ const SHARED_TASKS = [
   .concat(MOP_ROOMS.map((room) => `Mop: ${room}`));
 
 const LAUNDRY_SCHEDULE = {
-  Friday: ['Hope (19)'],
+  Friday: ['Hope'],
   Saturday: ['Tamara', 'Tatian'],
-  Sunday: ['Abby (15)']
+  Sunday: ['Abby']
 };
 
 const dayChipsEl = document.getElementById('dayChips');
@@ -156,22 +158,14 @@ function buildFallbackPayload() {
   const { tatian, tamara } = splitTasks(SHARED_TASKS);
   const templateTasks = {
     Tatian: tatian,
-    Tamara: tamara,
-    'Hope (19)': HOPE_TASKS,
-    'Abby (15)': ABBY_TASKS
+    Tamara: tamara
   };
 
   const items = [];
   dayNames.forEach((day, dayIndex) => {
     PERSON_ORDER.forEach((person) => {
-      const tasks = templateTasks[person] || [];
-      const hasLaundry = (LAUNDRY_SCHEDULE[day] || []).includes(person);
-      const selected = selectTasksForDay(tasks, dayIndex, MAX_TASKS_PER_PERSON_PER_DAY);
-      const dailyTasks = hasLaundry
-        ? ['Laundry'].concat(selected.slice(0, Math.max(0, MAX_TASKS_PER_PERSON_PER_DAY - 1)))
-        : selected.slice(0, MAX_TASKS_PER_PERSON_PER_DAY);
-
-      dailyTasks.forEach((task, index) => {
+      const tasks = getTasksForPersonDay(person, dayIndex, templateTasks);
+      tasks.forEach((task, index) => {
         items.push({
           id: `local-${person}-${day}-${index}`,
           row: null,
@@ -235,7 +229,8 @@ function applyData(payload, syncEnabled) {
 }
 
 function normalizeItem(item) {
-  const person = String(item.person || '').trim();
+  const rawPerson = String(item.person || '').trim();
+  const person = normalizePersonName(rawPerson);
   const dayName = normalizeDayName(item.day);
   if (!person || !dayName) return null;
   const dayIndex = dayNames.indexOf(dayName);
@@ -243,6 +238,7 @@ function normalizeItem(item) {
     id: item.row ? String(item.row) : String(item.id || `${person}-${dayName}-${item.task}`),
     row: item.row ? Number(item.row) : null,
     person,
+    sourcePerson: rawPerson,
     day: dayName,
     dayIndex,
     task: String(item.task || '').trim(),
@@ -500,7 +496,7 @@ function renderPersonCards() {
     const list = document.createElement('div');
     list.className = 'task-list';
 
-    const tasks = getVisibleItemsForPersonDay(personIndex, day.key);
+    const tasks = getItemsForPersonDay(personIndex, day.key);
     tasks.forEach((task) => {
       const id = task.id;
       const item = document.createElement('div');
@@ -680,24 +676,10 @@ function setSelectedDay(dayIndex) {
   updatePersonProgress();
 }
 
-function getVisibleItemsForPersonDay(personIndex, dayKey) {
+function getItemsForPersonDay(personIndex, dayKey) {
   const dayIndex = dayNames.indexOf(dayKey);
   const key = `${personIndex}-${dayIndex}`;
-  const items = dataStore.itemsByPersonDay.get(key) || [];
-  if (!items.length) return [];
-
-  const selected = [];
-  const extras = [];
-  items.forEach((item) => {
-    if (isLaundryTask(item)) {
-      selected.push(item);
-    } else {
-      extras.push(item);
-    }
-  });
-
-  const remaining = Math.max(0, MAX_TASKS_PER_PERSON_PER_DAY - selected.length);
-  return selected.concat(extras.slice(0, remaining));
+  return dataStore.itemsByPersonDay.get(key) || [];
 }
 
 function getDayTotals(dayIndex) {
@@ -705,7 +687,7 @@ function getDayTotals(dayIndex) {
   let done = 0;
   dataStore.people.forEach((_, personIndex) => {
     const dayName = dayNames[dayIndex];
-    const items = getVisibleItemsForPersonDay(personIndex, dayName);
+    const items = getItemsForPersonDay(personIndex, dayName);
     items.forEach((item) => {
       total += 1;
       if (isTaskDone(item.id)) done += 1;
@@ -716,7 +698,7 @@ function getDayTotals(dayIndex) {
 
 function getPersonDayTotals(personIndex, dayIndex) {
   const dayName = dayNames[dayIndex];
-  const items = getVisibleItemsForPersonDay(personIndex, dayName);
+  const items = getItemsForPersonDay(personIndex, dayName);
   const total = items.length;
   const done = items.reduce((count, item) => count + (isTaskDone(item.id) ? 1 : 0), 0);
   return { done, total };
@@ -727,7 +709,7 @@ function getWeekTotals() {
   let done = 0;
   dataStore.days.forEach((day, dayIndex) => {
     dataStore.people.forEach((_, personIndex) => {
-      const items = getVisibleItemsForPersonDay(personIndex, day.key);
+      const items = getItemsForPersonDay(personIndex, day.key);
       items.forEach((item) => {
         total += 1;
         if (isTaskDone(item.id)) done += 1;
@@ -801,7 +783,7 @@ function applySettings() {
 }
 
 async function checkForUpdate() {
-  if (!REPO_OWNER || !REPO_NAME || !BUILD_TIME || Number.isNaN(BUILD_TIME.getTime())) {
+  if (!REPO_OWNER || !REPO_NAME) {
     return;
   }
 
@@ -811,10 +793,22 @@ async function checkForUpdate() {
     });
     if (!response.ok) return;
     const data = await response.json();
+    const latestSha = data && data.sha;
+    if (latestSha && BUILD_SHA) {
+      if (latestSha !== BUILD_SHA) {
+        showUpdateBanner();
+      }
+      return;
+    }
+
     const latestDate = data && data.commit && data.commit.committer && data.commit.committer.date;
     if (!latestDate) return;
     const latest = new Date(latestDate);
-    if (latest > BUILD_TIME) {
+    const localBuild = (BUILD_TIME && !Number.isNaN(BUILD_TIME.getTime()))
+      ? BUILD_TIME
+      : new Date(document.lastModified);
+    const graceMs = 5 * 60 * 1000;
+    if (latest.getTime() - localBuild.getTime() > graceMs) {
       showUpdateBanner();
     }
   } catch (error) {
@@ -859,15 +853,37 @@ function splitTasks(tasks) {
   return { tatian, tamara };
 }
 
-function selectTasksForDay(tasks, dayIndex, max) {
-  if (!tasks.length) return [];
-  if (tasks.length <= max) return tasks.slice();
-  const start = (dayIndex * max) % tasks.length;
+function getTasksForPersonDay(person, dayIndex, templateTasks) {
+  const dayName = dayNames[dayIndex];
+  const weekday = dayIndex >= 1 && dayIndex <= 5;
+  if (person === 'Abby') {
+    if (!weekday) return [];
+    return ABBY_DAILY.concat(pickRotating(KID_CHORE_POOL, dayIndex, 2, 0));
+  }
+  if (person === 'Hope') {
+    if (!weekday) return [];
+    return HOPE_DAILY.concat(pickRotating(KID_CHORE_POOL, dayIndex, 2, 2));
+  }
+  const tasks = templateTasks[person] || [];
+  const hasLaundry = (LAUNDRY_SCHEDULE[dayName] || []).includes(person);
+  const start = (dayIndex * 4) % (tasks.length || 1);
+  const dailyTasks = tasks.length ? tasks.slice(start, start + 4) : [];
+  const normalized = dailyTasks.length === 4 ? dailyTasks : dailyTasks.concat(tasks.slice(0, Math.max(0, 4 - dailyTasks.length)));
+  return hasLaundry ? ['Laundry'].concat(normalized.slice(0, 3)) : normalized;
+}
+
+function pickRotating(list, dayIndex, count, offset) {
+  if (!list.length) return [];
+  const start = (dayIndex + offset) % list.length;
   const selected = [];
-  for (let i = 0; i < max; i += 1) {
-    selected.push(tasks[(start + i) % tasks.length]);
+  for (let i = 0; i < count; i += 1) {
+    selected.push(list[(start + i) % list.length]);
   }
   return selected;
+}
+
+function normalizePersonName(name) {
+  return name.replace(/\s*\(\d+\)\s*/g, '').trim();
 }
 
 function formatDateKey(date) {

@@ -519,17 +519,14 @@ h1 {
 }
 
 .collapse-btn::before {
-  content: '';
-  width: 8px;
-  height: 8px;
-  border-right: 2px solid #8a5a18;
-  border-bottom: 2px solid #8a5a18;
-  transform: rotate(-135deg);
+  content: '▴';
+  font-size: 14px;
+  color: #8a5a18;
   transition: transform 0.2s ease;
 }
 
 .person-card.is-collapsed .collapse-btn::before {
-  transform: rotate(45deg);
+  content: '▾';
 }
 
 .task-list {

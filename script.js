@@ -5,6 +5,7 @@ const REPO_OWNER = CONFIG.repoOwner || '';
 const REPO_NAME = CONFIG.repoName || '';
 const BUILD_TIME = CONFIG.buildTime ? new Date(CONFIG.buildTime) : null;
 const BUILD_SHA = CONFIG.buildSha || '';
+const updateState = { latestSha: null, latestDate: null };
 
 const dayNames = [
   'Sunday',
@@ -72,11 +73,10 @@ const LAUNDRY_SCHEDULE = {
 
 const dayChipsEl = document.getElementById('dayChips');
 const personCardsEl = document.getElementById('personCards');
-const overviewGridEl = document.getElementById('overviewGrid');
+const summaryBodyEl = document.getElementById('summaryBody');
+const summaryToggleEl = document.getElementById('summaryToggle');
 const laundryListEl = document.getElementById('laundryList');
-const selectedDateEl = document.getElementById('selectedDate');
 const weekMetaEl = document.getElementById('weekMeta');
-const weekStartEl = document.getElementById('weekStart');
 const rotationWeekEl = document.getElementById('rotationWeek');
 const overallProgressEl = document.getElementById('overallProgress');
 const overallMetaEl = document.getElementById('overallMeta');
@@ -92,6 +92,12 @@ const closeSettingsBtn = document.getElementById('closeSettings');
 const textSizeRangeEl = document.getElementById('textSizeRange');
 const toggleHighContrastEl = document.getElementById('toggleHighContrast');
 const themeInputs = Array.from(document.querySelectorAll('input[name="theme"]'));
+const reminderModalEl = document.getElementById('reminderModal');
+const reminderTaskEl = document.getElementById('reminderTask');
+const reminderTimeEl = document.getElementById('reminderTime');
+const reminderShareBtn = document.getElementById('reminderShare');
+const reminderCancelBtn = document.getElementById('reminderCancel');
+const reminderCloseBtn = document.getElementById('closeReminder');
 
 const REMIND_ICON = `
   <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -106,11 +112,13 @@ const state = {
   syncEnabled: false,
   weekKey: '',
   collapsed: {},
+  summaryCollapsed: false,
   settings: {
-    textSize: 1,
+    textSize: 3,
     highContrast: false,
     theme: 'warm'
-  }
+  },
+  reminder: null
 };
 
 const dataStore = {
@@ -356,10 +364,14 @@ function hydrateCollapsedState() {
 
   if (saved && saved.settings) {
     state.settings = {
-      textSize: Number.isFinite(saved.settings.textSize) ? saved.settings.textSize : 1,
+      textSize: Number.isFinite(saved.settings.textSize) ? saved.settings.textSize : 3,
       highContrast: Boolean(saved.settings.highContrast),
       theme: saved.settings.theme || 'warm'
     };
+  }
+
+  if (saved && typeof saved.summaryCollapsed === 'boolean') {
+    state.summaryCollapsed = saved.summaryCollapsed;
   }
 }
 
@@ -398,7 +410,8 @@ function loadUiState() {
 function saveUiState() {
   localStorage.setItem('chore-map-ui', JSON.stringify({
     collapsed: state.collapsed,
-    settings: state.settings
+    settings: state.settings,
+    summaryCollapsed: state.summaryCollapsed
   }));
 }
 
@@ -406,9 +419,8 @@ function renderAll() {
   renderHeader();
   renderDayChips();
   renderPersonCards();
-  renderOverview();
+  renderSummary();
   renderLaundry();
-  updateSelectedDate();
   updateOverallProgress();
 }
 
@@ -423,12 +435,7 @@ function renderHeader() {
     ? `${startMonth} ${startDay}-${endDay}, ${year}`
     : `${startMonth} ${startDay} - ${endMonth} ${endDay}, ${year}`;
 
-  weekMetaEl.textContent = `Week of ${rangeLabel} | Rotation Week ${dataStore.rotationWeek}`;
-  weekStartEl.textContent = dataStore.weekStartDate.toLocaleDateString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric'
-  });
+  weekMetaEl.textContent = `Week of ${rangeLabel}`;
   rotationWeekEl.textContent = dataStore.rotationWeek;
 }
 
@@ -534,7 +541,7 @@ function renderPersonCards() {
       remindBtn.setAttribute('title', 'Set reminder');
       remindBtn.innerHTML = REMIND_ICON;
       remindBtn.dataset.personName = person.name;
-      remindBtn.dataset.dayLabel = day.full;
+      remindBtn.dataset.dayIndex = String(state.selectedDayIndex);
       remindBtn.dataset.task = task.task;
 
       item.appendChild(label);
@@ -548,37 +555,42 @@ function renderPersonCards() {
   });
 }
 
-function renderOverview() {
-  overviewGridEl.innerHTML = '';
+function renderSummary() {
+  if (!summaryBodyEl) return;
+  summaryBodyEl.innerHTML = '';
+  summaryBodyEl.hidden = state.summaryCollapsed;
+  if (summaryToggleEl) {
+    summaryToggleEl.setAttribute('aria-expanded', String(!state.summaryCollapsed));
+    summaryToggleEl.textContent = state.summaryCollapsed ? '▾' : '▴';
+  }
+
   dataStore.people.forEach((person, personIndex) => {
+    const { done, total } = getPersonWeekTotals(personIndex);
     const row = document.createElement('div');
-    row.className = 'overview-row';
+    row.className = 'summary-row';
 
     const name = document.createElement('div');
-    name.className = 'overview-name';
+    name.className = 'summary-name';
     name.textContent = person.name;
 
-    const daysWrap = document.createElement('div');
-    daysWrap.className = 'overview-days';
+    const count = document.createElement('div');
+    count.className = 'summary-count';
+    count.textContent = `${done}/${total}`;
 
-    dataStore.days.forEach((day, dayIndex) => {
-      const { done, total } = getPersonDayTotals(personIndex, dayIndex);
-      const cell = document.createElement('button');
-      cell.type = 'button';
-      cell.className = 'mini-day';
-      cell.dataset.personIndex = personIndex;
-      cell.dataset.dayIndex = dayIndex;
-      cell.dataset.level = getCompletionLevel(done, total);
-      if (dayIndex === dataStore.todayIndex) {
-        cell.classList.add('is-today');
-      }
-      cell.innerHTML = `<strong>${day.short}</strong>${done}/${total}`;
-      daysWrap.appendChild(cell);
-    });
+    const bar = document.createElement('div');
+    bar.className = 'summary-bar';
+
+    const fill = document.createElement('div');
+    fill.className = 'summary-fill';
+    const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+    fill.style.width = `${pct}%`;
+
+    bar.appendChild(fill);
 
     row.appendChild(name);
-    row.appendChild(daysWrap);
-    overviewGridEl.appendChild(row);
+    row.appendChild(count);
+    row.appendChild(bar);
+    summaryBodyEl.appendChild(row);
   });
 }
 
@@ -623,10 +635,6 @@ function buildLaundrySchedule() {
   return schedule;
 }
 
-function updateSelectedDate() {
-  selectedDateEl.textContent = dataStore.days[state.selectedDayIndex].full;
-}
-
 function updateOverallProgress() {
   const { done, total } = getWeekTotals();
   const percentage = total === 0 ? 0 : Math.round((done / total) * 100);
@@ -653,29 +661,11 @@ function updatePersonProgress() {
   });
 }
 
-function updateOverviewCounts() {
-  overviewGridEl.querySelectorAll('.mini-day').forEach((cell) => {
-    const personIndex = Number(cell.dataset.personIndex);
-    const dayIndex = Number(cell.dataset.dayIndex);
-    const { done, total } = getPersonDayTotals(personIndex, dayIndex);
-    cell.dataset.level = getCompletionLevel(done, total);
-    cell.innerHTML = `<strong>${dataStore.days[dayIndex].short}</strong>${done}/${total}`;
-  });
-}
-
-function getCompletionLevel(done, total) {
-  if (total === 0) return 'none';
-  if (done === 0) return 'none';
-  if (done === total) return 'full';
-  return 'partial';
-}
-
 function setSelectedDay(dayIndex) {
   state.selectedDayIndex = clamp(dayIndex, 0, dataStore.days.length - 1);
   saveState();
   renderDayChips();
   renderPersonCards();
-  updateSelectedDate();
   updatePersonProgress();
 }
 
@@ -717,6 +707,19 @@ function getWeekTotals() {
         total += 1;
         if (isTaskDone(item.id)) done += 1;
       });
+    });
+  });
+  return { done, total };
+}
+
+function getPersonWeekTotals(personIndex) {
+  let total = 0;
+  let done = 0;
+  dataStore.days.forEach((day) => {
+    const items = getItemsForPersonDay(personIndex, day.key);
+    items.forEach((item) => {
+      total += 1;
+      if (isTaskDone(item.id)) done += 1;
     });
   });
   return { done, total };
@@ -780,11 +783,14 @@ function showToast(message) {
 
 function applySettings() {
   document.body.classList.remove('text-small', 'text-medium', 'text-large', 'theme-warm', 'theme-sage', 'theme-slate');
-  const size = clamp(Math.round(state.settings.textSize), 0, 2);
-  if (size === 1) {
+  const size = clamp(Math.round(state.settings.textSize), 2, 4);
+  if (size === 2) {
+    document.body.classList.add('text-small');
+  }
+  if (size === 3) {
     document.body.classList.add('text-medium');
   }
-  if (size === 2) {
+  if (size === 4) {
     document.body.classList.add('text-large');
   }
   document.body.classList.add(`theme-${state.settings.theme}`);
@@ -809,6 +815,15 @@ async function checkForUpdate() {
     if (!response.ok) return;
     const data = await response.json();
     const latestSha = data && data.sha;
+    const latestDate = data && data.commit && data.commit.committer && data.commit.committer.date;
+    updateState.latestSha = latestSha || null;
+    updateState.latestDate = latestDate || null;
+
+    const seenSha = localStorage.getItem('chore-map-latest-seen-sha');
+    const seenDate = localStorage.getItem('chore-map-latest-seen-date');
+    if (latestSha && seenSha === latestSha) return;
+    if (latestDate && seenDate === latestDate) return;
+
     if (latestSha && BUILD_SHA) {
       if (latestSha !== BUILD_SHA) {
         showUpdateBanner();
@@ -816,7 +831,6 @@ async function checkForUpdate() {
       return;
     }
 
-    const latestDate = data && data.commit && data.commit.committer && data.commit.committer.date;
     if (!latestDate) return;
     const latest = new Date(latestDate);
     const localBuild = (BUILD_TIME && !Number.isNaN(BUILD_TIME.getTime()))
@@ -942,7 +956,7 @@ personCardsEl.addEventListener('change', async (event) => {
 
   updateDayChipCounts();
   updatePersonProgress();
-  updateOverviewCounts();
+  renderSummary();
   updateOverallProgress();
   saveState();
 
@@ -959,7 +973,7 @@ personCardsEl.addEventListener('change', async (event) => {
       }
       updateDayChipCounts();
       updatePersonProgress();
-      updateOverviewCounts();
+      renderSummary();
       updateOverallProgress();
       setConnectionStatus('Sync error - try again', 'is-error');
       showToast('Sync error - try again.');
@@ -982,34 +996,15 @@ personCardsEl.addEventListener('click', async (event) => {
   const remindBtn = event.target.closest('.remind-btn');
   if (!remindBtn) return;
   const personName = remindBtn.dataset.personName;
-  const dayLabel = remindBtn.dataset.dayLabel;
+  const dayIndex = Number(remindBtn.dataset.dayIndex);
   const task = remindBtn.dataset.task;
   if (!personName || !task) return;
-
-  const reminderText = `${personName} • ${task} (${dayLabel})`;
-  if (navigator.share) {
-    try {
-      await navigator.share({
-        title: 'Chore reminder',
-        text: reminderText
-      });
-      return;
-    } catch (error) {
-      console.warn('Share cancelled or failed', error);
-    }
-  }
-
-  if (navigator.clipboard) {
-    try {
-      await navigator.clipboard.writeText(reminderText);
-      showToast('Copied reminder text.');
-      return;
-    } catch (error) {
-      console.warn('Clipboard write failed', error);
-    }
-  }
-
-  showToast('Share not available on this device.');
+  state.reminder = {
+    personName,
+    task,
+    dayIndex: Number.isFinite(dayIndex) ? dayIndex : state.selectedDayIndex
+  };
+  openReminderModal();
 });
 
 dayChipsEl.addEventListener('click', (event) => {
@@ -1018,11 +1013,13 @@ dayChipsEl.addEventListener('click', (event) => {
   setSelectedDay(Number(target.dataset.dayIndex));
 });
 
-overviewGridEl.addEventListener('click', (event) => {
-  const target = event.target.closest('.mini-day');
-  if (!target) return;
-  setSelectedDay(Number(target.dataset.dayIndex));
-});
+if (summaryToggleEl) {
+  summaryToggleEl.addEventListener('click', () => {
+    state.summaryCollapsed = !state.summaryCollapsed;
+    saveUiState();
+    renderSummary();
+  });
+}
 
 todayJumpBtn.addEventListener('click', () => {
   setSelectedDay(getInitialDayIndex(dataStore.days));
@@ -1030,7 +1027,15 @@ todayJumpBtn.addEventListener('click', () => {
 
 if (refreshBtnEl) {
   refreshBtnEl.addEventListener('click', () => {
-    window.location.reload();
+    if (updateState.latestSha) {
+      localStorage.setItem('chore-map-latest-seen-sha', updateState.latestSha);
+    } else if (updateState.latestDate) {
+      localStorage.setItem('chore-map-latest-seen-date', updateState.latestDate);
+    }
+    updateBannerEl.hidden = true;
+    const url = new URL(window.location.href);
+    url.searchParams.set('v', String(Date.now()));
+    window.location.replace(url.toString());
   });
 }
 
@@ -1042,6 +1047,20 @@ function openSettings() {
 function closeSettings() {
   if (!settingsModalEl) return;
   settingsModalEl.hidden = true;
+}
+
+function openReminderModal() {
+  if (!reminderModalEl || !state.reminder) return;
+  const { personName, task, dayIndex } = state.reminder;
+  reminderTaskEl.textContent = `${personName} • ${task}`;
+  const savedTime = localStorage.getItem('chore-reminder-time') || '18:00';
+  if (reminderTimeEl) reminderTimeEl.value = savedTime;
+  reminderModalEl.hidden = false;
+}
+
+function closeReminderModal() {
+  if (!reminderModalEl) return;
+  reminderModalEl.hidden = true;
 }
 
 if (openSettingsBtn) {
@@ -1061,6 +1080,75 @@ if (settingsModalEl) {
     if (event.target === settingsModalEl) {
       closeSettings();
     }
+  });
+}
+
+if (reminderModalEl) {
+  reminderModalEl.addEventListener('click', (event) => {
+    if (event.target === reminderModalEl) {
+      closeReminderModal();
+    }
+  });
+}
+
+if (reminderCancelBtn) {
+  reminderCancelBtn.addEventListener('click', () => {
+    closeReminderModal();
+  });
+}
+
+if (reminderCloseBtn) {
+  reminderCloseBtn.addEventListener('click', () => {
+    closeReminderModal();
+  });
+}
+
+if (reminderShareBtn) {
+  reminderShareBtn.addEventListener('click', async () => {
+    if (!state.reminder) return;
+    const timeValue = reminderTimeEl && reminderTimeEl.value ? reminderTimeEl.value : '18:00';
+    localStorage.setItem('chore-reminder-time', timeValue);
+
+    const [hours, minutes] = timeValue.split(':').map(Number);
+    const dayIndex = state.reminder.dayIndex;
+    const date = new Date(dataStore.days[dayIndex].date);
+    if (!Number.isNaN(hours) && !Number.isNaN(minutes)) {
+      date.setHours(hours, minutes, 0, 0);
+    }
+    const dateLabel = date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+    const timeLabel = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    const reminderText = `${state.reminder.personName} • ${state.reminder.task} — ${dateLabel} at ${timeLabel}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Chore reminder',
+          text: reminderText
+        });
+        closeReminderModal();
+        return;
+      } catch (error) {
+        console.warn('Share cancelled or failed', error);
+      }
+    }
+
+    if (navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(reminderText);
+        showToast('Copied reminder text.');
+        closeReminderModal();
+        return;
+      } catch (error) {
+        console.warn('Clipboard write failed', error);
+      }
+    }
+
+    showToast('Share not available on this device.');
   });
 }
 

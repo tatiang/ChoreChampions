@@ -930,7 +930,7 @@ h1 {
 }
 
 body.text-small {
-  font-size: 16px;
+  font-size: 17px;
 }
 
 body.text-small .week-meta,
@@ -942,19 +942,19 @@ body.text-small .summary-count,
 body.text-small .summary-name,
 body.text-small .cluster-item span,
 body.text-small .app-footer {
-  font-size: 13px;
+  font-size: 14px;
 }
 
 body.text-small .person-name {
-  font-size: 18px;
+  font-size: 20px;
 }
 
 body.text-small .section-title h2 {
-  font-size: 22px;
+  font-size: 24px;
 }
 
 body.text-medium {
-  font-size: 17px;
+  font-size: 19px;
 }
 
 body.text-medium .week-meta,
@@ -966,19 +966,19 @@ body.text-medium .summary-name,
 body.text-medium .summary-count,
 body.text-medium .cluster-item span,
 body.text-medium .app-footer {
-  font-size: 14px;
+  font-size: 15px;
 }
 
 body.text-medium .person-name {
-  font-size: 20px;
+  font-size: 22px;
 }
 
 body.text-medium .section-title h2 {
-  font-size: 24px;
+  font-size: 26px;
 }
 
 body.text-large {
-  font-size: 19px;
+  font-size: 21px;
 }
 
 body.text-large .week-meta,
@@ -990,15 +990,15 @@ body.text-large .summary-name,
 body.text-large .summary-count,
 body.text-large .cluster-item span,
 body.text-large .app-footer {
-  font-size: 15px;
+  font-size: 16px;
 }
 
 body.text-large .person-name {
-  font-size: 22px;
+  font-size: 24px;
 }
 
 body.text-large .section-title h2 {
-  font-size: 26px;
+  font-size: 28px;
 }
 
 body.theme-warm {

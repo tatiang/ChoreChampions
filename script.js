@@ -117,7 +117,7 @@ const state = {
   collapsed: {},
   summaryCollapsed: false,
   settings: {
-    textSize: 3,
+    textSize: 19,
     highContrast: false,
     theme: 'warm'
   },
@@ -366,8 +366,18 @@ function hydrateCollapsedState() {
   }
 
   if (saved && saved.settings) {
+    const savedSize = Number(saved.settings.textSize);
+    let nextSize = 19;
+    if (Number.isFinite(savedSize)) {
+      if (savedSize <= 4) {
+        const legacyMap = { 2: 17, 3: 19, 4: 21 };
+        nextSize = legacyMap[savedSize] || 19;
+      } else {
+        nextSize = savedSize;
+      }
+    }
     state.settings = {
-      textSize: Number.isFinite(saved.settings.textSize) ? saved.settings.textSize : 3,
+      textSize: nextSize,
       highContrast: Boolean(saved.settings.highContrast),
       theme: saved.settings.theme || 'warm'
     };
@@ -791,14 +801,14 @@ function showToast(message) {
 
 function applySettings() {
   document.body.classList.remove('text-small', 'text-medium', 'text-large', 'theme-warm', 'theme-sage', 'theme-slate');
-  const size = clamp(Math.round(state.settings.textSize), 2, 4);
-  if (size === 2) {
+  const size = clamp(Math.round(state.settings.textSize), 17, 21);
+  if (size <= 17) {
     document.body.classList.add('text-small');
   }
-  if (size === 3) {
+  if (size === 19) {
     document.body.classList.add('text-medium');
   }
-  if (size === 4) {
+  if (size >= 21) {
     document.body.classList.add('text-large');
   }
   document.body.classList.add(`theme-${state.settings.theme}`);

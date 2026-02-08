@@ -15,6 +15,10 @@
   --bg-base-2: #f1e6d8;
   --orb-1: rgba(255, 138, 91, 0.22);
   --orb-2: rgba(94, 188, 155, 0.2);
+  --app-surface-1: #ffffff;
+  --app-surface-2: #fbf7f1;
+  --card-soft: #fff7ef;
+  --track: #f1e6da;
   --accent: #ff8a5b;
   --accent-2: #5ebc9b;
   --accent-3: #4b9cd6;
@@ -52,7 +56,7 @@ body {
 .app {
   width: min(440px, 100%);
   min-height: 100svh;
-  background: linear-gradient(180deg, #ffffff 0%, #fbf7f1 100%);
+  background: linear-gradient(180deg, var(--app-surface-1) 0%, var(--app-surface-2) 100%);
   border-radius: 36px;
   box-shadow: var(--shadow);
   padding: 26px 20px calc(70px + env(safe-area-inset-bottom));
@@ -398,7 +402,7 @@ h1 {
 }
 
 .week-card {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.7));
+  background: linear-gradient(135deg, var(--card) 0%, var(--card-soft) 100%);
   border: 1px solid var(--line);
   border-radius: 24px;
   padding: 16px;
@@ -432,7 +436,7 @@ h1 {
 
 .progress-bar {
   height: 10px;
-  background: #f1e6da;
+  background: var(--track);
   border-radius: 999px;
   overflow: hidden;
 }
@@ -600,8 +604,8 @@ h1 {
 }
 
 .collapse-btn {
-  width: 30px;
-  height: 30px;
+  width: 36px;
+  height: 36px;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: #fff;
@@ -613,7 +617,7 @@ h1 {
 
 .collapse-btn::before {
   content: '▴';
-  font-size: 14px;
+  font-size: 18px;
   color: var(--theme-accent-ink);
   transition: transform 0.2s ease;
 }
@@ -634,7 +638,7 @@ h1 {
   align-items: start;
   padding: 10px 12px;
   border-radius: 14px;
-  background: #fffaf5;
+  background: var(--chip);
   border: 1px solid rgba(234, 223, 211, 0.8);
   transition: border-color 0.2s ease, background 0.2s ease;
 }
@@ -874,6 +878,12 @@ body.theme-warm {
   --bg-base-2: #f1e6d8;
   --orb-1: rgba(255, 138, 91, 0.22);
   --orb-2: rgba(94, 188, 155, 0.2);
+  --app-surface-1: #fffaf6;
+  --app-surface-2: #f6efe7;
+  --card-soft: #fff3ea;
+  --track: #efe0d1;
+  --line: #e5d3c2;
+  --chip: #fff1e6;
 }
 
 body.theme-sage {
@@ -888,6 +898,12 @@ body.theme-sage {
   --bg-base-2: #e6efe7;
   --orb-1: rgba(94, 188, 155, 0.24);
   --orb-2: rgba(75, 156, 214, 0.2);
+  --app-surface-1: #f4faf7;
+  --app-surface-2: #e9f2ee;
+  --card-soft: #f5fbf8;
+  --track: #e3efe8;
+  --line: #d5e4dd;
+  --chip: #eef7f3;
 }
 
 body.theme-slate {
@@ -902,6 +918,12 @@ body.theme-slate {
   --bg-base-2: #dee7f0;
   --orb-1: rgba(75, 156, 214, 0.24);
   --orb-2: rgba(127, 163, 204, 0.22);
+  --app-surface-1: #f3f7fb;
+  --app-surface-2: #e7edf5;
+  --card-soft: #f4f8fc;
+  --track: #dfe7f1;
+  --line: #d2dee9;
+  --chip: #eef4fa;
 }
 
 body.high-contrast {

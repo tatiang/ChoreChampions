@@ -18,7 +18,15 @@
         <p class="week-meta" id="weekMeta">Week of Feb 1-7, 2026 | Rotation Week 2</p>
         <div class="connection-status" id="connectionStatus">Not connected</div>
       </div>
-      <button class="ghost-btn" id="todayJump" type="button">Today</button>
+      <div class="header-actions">
+        <button class="ghost-btn" id="todayJump" type="button">Today</button>
+        <button class="icon-btn settings-btn" id="openSettings" type="button" aria-label="Open settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"></path>
+            <path d="M19.4 12a7.2 7.2 0 0 0-.1-1l2-1.5-2-3.4-2.4.9c-.6-.5-1.3-.9-2.1-1.2l-.4-2.5H9.6l-.4 2.5c-.8.3-1.5.7-2.1 1.2l-2.4-.9-2 3.4 2 1.5a7.2 7.2 0 0 0 0 2.1l-2 1.5 2 3.4 2.4-.9c.6.5 1.3.9 2.1 1.2l.4 2.5h4.8l.4-2.5c.8-.3 1.5-.7 2.1-1.2l2.4.9 2-3.4-2-1.5c.1-.3.1-.7.1-1Z"></path>
+          </svg>
+        </button>
+      </div>
     </header>
 
     <div class="update-banner" id="updateBanner" hidden>
@@ -77,6 +85,38 @@
 
     <footer class="app-footer" id="appFooter">Tap tasks to mark them complete.</footer>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <div class="settings-modal" id="settingsModal" hidden>
+      <div class="settings-card" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+        <div class="settings-header">
+          <div>
+            <div class="settings-title" id="settingsTitle">Settings</div>
+            <div class="settings-caption">Adjust the view for your screen.</div>
+          </div>
+          <button class="icon-btn" id="closeSettings" type="button" aria-label="Close settings">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M6 6l12 12M18 6l-12 12"></path>
+            </svg>
+          </button>
+        </div>
+
+        <label class="toggle-row">
+          <span>Larger text</span>
+          <span class="toggle">
+            <input type="checkbox" id="toggleLargeText" />
+            <span class="toggle-slider"></span>
+          </span>
+        </label>
+
+        <label class="toggle-row">
+          <span>Higher contrast</span>
+          <span class="toggle">
+            <input type="checkbox" id="toggleHighContrast" />
+            <span class="toggle-slider"></span>
+          </span>
+        </label>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -85,7 +125,7 @@
       token: 'chore-2026-sunrise!',
       repoOwner: 'tatiang',
       repoName: 'FamilyChores',
-      buildTime: '2026-02-07T23:50:31Z'
+      buildTime: '2026-02-08T00:22:28Z'
     };
   </script>
   <script src="script.js"></script>

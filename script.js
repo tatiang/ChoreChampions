@@ -84,6 +84,11 @@ const appFooterEl = document.getElementById('appFooter');
 const toastEl = document.getElementById('toast');
 const updateBannerEl = document.getElementById('updateBanner');
 const refreshBtnEl = document.getElementById('refreshBtn');
+const settingsModalEl = document.getElementById('settingsModal');
+const openSettingsBtn = document.getElementById('openSettings');
+const closeSettingsBtn = document.getElementById('closeSettings');
+const toggleLargeTextEl = document.getElementById('toggleLargeText');
+const toggleHighContrastEl = document.getElementById('toggleHighContrast');
 
 const REMIND_ICON = `
   <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -97,7 +102,11 @@ const state = {
   completed: {},
   syncEnabled: false,
   weekKey: '',
-  collapsed: {}
+  collapsed: {},
+  settings: {
+    largeText: false,
+    highContrast: false
+  }
 };
 
 const dataStore = {
@@ -221,6 +230,7 @@ function applyData(payload, syncEnabled) {
   hydrateSelectedDay();
   hydrateCompletion(items, syncEnabled);
   hydrateCollapsedState();
+  applySettings();
   renderAll();
 }
 
@@ -314,12 +324,7 @@ function setPeople(items) {
 }
 
 function hydrateSelectedDay() {
-  const saved = loadState();
-  if (saved && typeof saved.selectedDayIndex === 'number') {
-    state.selectedDayIndex = clamp(saved.selectedDayIndex, 0, 6);
-  } else {
-    state.selectedDayIndex = dataStore.todayIndex;
-  }
+  state.selectedDayIndex = dataStore.todayIndex;
 }
 
 function hydrateCompletion(items, syncEnabled) {
@@ -349,6 +354,13 @@ function hydrateCollapsedState() {
     state.collapsed = saved.collapsed;
   } else {
     state.collapsed = {};
+  }
+
+  if (saved && saved.settings) {
+    state.settings = {
+      largeText: Boolean(saved.settings.largeText),
+      highContrast: Boolean(saved.settings.highContrast)
+    };
   }
 }
 
@@ -386,7 +398,8 @@ function loadUiState() {
 
 function saveUiState() {
   localStorage.setItem('chore-map-ui', JSON.stringify({
-    collapsed: state.collapsed
+    collapsed: state.collapsed,
+    settings: state.settings
   }));
 }
 
@@ -780,6 +793,13 @@ function showToast(message) {
   }, 2200);
 }
 
+function applySettings() {
+  document.body.classList.toggle('text-large', state.settings.largeText);
+  document.body.classList.toggle('high-contrast', state.settings.highContrast);
+  if (toggleLargeTextEl) toggleLargeTextEl.checked = state.settings.largeText;
+  if (toggleHighContrastEl) toggleHighContrastEl.checked = state.settings.highContrast;
+}
+
 async function checkForUpdate() {
   if (!REPO_OWNER || !REPO_NAME || !BUILD_TIME || Number.isNaN(BUILD_TIME.getTime())) {
     return;
@@ -978,5 +998,51 @@ todayJumpBtn.addEventListener('click', () => {
 if (refreshBtnEl) {
   refreshBtnEl.addEventListener('click', () => {
     window.location.reload();
+  });
+}
+
+function openSettings() {
+  if (!settingsModalEl) return;
+  settingsModalEl.hidden = false;
+}
+
+function closeSettings() {
+  if (!settingsModalEl) return;
+  settingsModalEl.hidden = true;
+}
+
+if (openSettingsBtn) {
+  openSettingsBtn.addEventListener('click', () => {
+    openSettings();
+  });
+}
+
+if (closeSettingsBtn) {
+  closeSettingsBtn.addEventListener('click', () => {
+    closeSettings();
+  });
+}
+
+if (settingsModalEl) {
+  settingsModalEl.addEventListener('click', (event) => {
+    if (event.target === settingsModalEl) {
+      closeSettings();
+    }
+  });
+}
+
+if (toggleLargeTextEl) {
+  toggleLargeTextEl.addEventListener('change', () => {
+    state.settings.largeText = toggleLargeTextEl.checked;
+    applySettings();
+    saveUiState();
+  });
+}
+
+if (toggleHighContrastEl) {
+  toggleHighContrastEl.addEventListener('change', () => {
+    state.settings.highContrast = toggleHighContrastEl.checked;
+    applySettings();
+    saveUiState();
   });
 }

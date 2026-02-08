@@ -781,8 +781,12 @@ function showToast(message) {
 function applySettings() {
   document.body.classList.remove('text-small', 'text-medium', 'text-large', 'theme-warm', 'theme-sage', 'theme-slate');
   const size = clamp(Math.round(state.settings.textSize), 0, 2);
-  const sizeClass = size === 0 ? 'text-small' : size === 1 ? 'text-medium' : 'text-large';
-  document.body.classList.add(sizeClass);
+  if (size === 1) {
+    document.body.classList.add('text-medium');
+  }
+  if (size === 2) {
+    document.body.classList.add('text-large');
+  }
   document.body.classList.add(`theme-${state.settings.theme}`);
   document.body.classList.toggle('high-contrast', state.settings.highContrast);
 

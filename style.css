@@ -816,29 +816,6 @@ h1 {
   transform: translateY(0);
 }
 
-body.text-small {
-  font-size: 15px;
-}
-
-body.text-small .week-meta,
-body.text-small .section-title span,
-body.text-small .progress-pill,
-body.text-small .day-chip span,
-body.text-small .task-label span,
-body.text-small .overview-name,
-body.text-small .cluster-item span,
-body.text-small .app-footer {
-  font-size: 12px;
-}
-
-body.text-small .person-name {
-  font-size: 17px;
-}
-
-body.text-small .section-title h2 {
-  font-size: 20px;
-}
-
 body.text-medium {
   font-size: 17px;
 }
